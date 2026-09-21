@@ -1,0 +1,115 @@
+################
+## METASPLOIT ##
+################
+
+Metasploit cuenta con dos versiones principales, Metasploit Pro, que es la versión comercial que facilita la automatización y la gestión de tareas y dispone de una interfaz gráfica; y Metasploit Framework, que es la versión de código abierto que funciona desde la línea de comandos.
+
+Los componentes principales de Metasploit Framework son:
+    1. msfconsole: es la interfaz de línea de comandos principal.
+    2. modules: módulos de apoyo como exploits, escáneres, payloads, etc. Están dedicados a una tarea específica.
+    3. tools: herramientas independientes que ayudan en la investigación de vulnerabilidades o en las pruebas de pentesting. Algunas de estas herramientas son msfvenom, pattern_create o pattern_offset.
+
+
+
+## MÓDULOS ##
+
+Los módulos de Metasploit se dividen según su propósito dentro de una auditoría de seguridad:
+
+    - Auxiliary (Auxiliares): Son módulos de soporte que no explotan vulnerabilidades directamente. Incluyen herramientas útiles para la fase de reconocimiento, como escáneres de red, rastreadores (crawlers) y fuzzers.
+
+    - Encoders (Codificadores): Sirven para alterar la apariencia de los exploits y payloads (cargas útiles) con el objetivo de intentar ocultarlos frente a los antivirus tradicionales basados en firmas. Su eficacia es limitada, ya que los sistemas de seguridad modernos realizan comprobaciones más avanzadas.
+
+    - Evasion (Evasión): A diferencia de los codificadores, estos módulos están diseñados de forma específica para intentar burlar directamente el software antivirus y los controles de seguridad del sistema objetivo.
+
+    - Exploits: Es el código diseñado para aprovechar una vulnerabilidad concreta en el sistema que se está atacando. Están organizados por plataforma o sistema operativo.
+
+    - NOPs (No OPeration): Son instrucciones que le dicen al procesador que no haga nada durante un ciclo. Se utilizan como "relleno" técnico para ajustar, alinear y estabilizar el tamaño de los payloads en la memoria.
+
+    - Payloads (Cargas útiles): Es el código que realmente se ejecuta en el sistema objetivo una vez que el exploit ha tenido éxito. Se dividen en cuatro subcategorías:
+        · Adapters (Adaptadores): Envuelven un payload simple para empaquetarlo en otro formato, como transformarlo en un comando de PowerShell.
+        · Singles (Simples / Inline): Son autónomos. Contienen absolutamente todo el código necesario para ejecutar la acción de una sola vez, sin necesitar nada más.
+        · Stagers (Iniciadores): Son fragmentos de código muy pequeños cuya única misión es abrir un canal de comunicación entre el objetivo y Metasploit para descargar el resto del ataque.
+        · Stages (Fases): Es el componente de mayor tamaño que es descargado por el stager. Este diseño en dos pasos permite lanzar ataques complejos sin que el tamaño inicial del archivo sea un problema.
+
+    - Post (Post-explotación): Se utilizan en la fase final, una vez que ya has comprometido y obtenido acceso al equipo, para realizar acciones adicionales (como extraer contraseñas, recolectar datos o mantener el acceso persistente).
+
+
+
+## CONSOLA ##
+* En la consola de Metasploit Framework se pueden utilizar la mayoria de comandos comunes de Linux.
+
+- Iniciar consola:
+    mfsconsole
+
+- Ver historial de comandos:
+    history
+
+- Obtener ayuda sobre un comando:
+    help <comando>
+
+La consola funciona por contextos. Esto quiere decir que, a no ser que se utilicen variables globales, la configuración de los parámetros dependerá del módulo que se esté utilizando.
+
+- Usar un módulo concreto:
+    use <nombre_módulo>
+
+- Ver contexto (parámetros) de un módulo:
+    show options
+
+- Ver información de un módulo:
+    info [<módulo>]
+
+- Ver payloads disponibles en un módulo:
+    show payloads
+
+- Abandonar un módulo:
+    back
+
+- Buscar módulo utilizando un parámetro, número de CVE, nombre de un exploit, etc.:
+    search [type:<tipo_módulo>] <aspecto_a_buscar>
+
+Al buscar módulos, una de las columnas que devuelve msfconsole es <<Rank>>, que indica la fiabilidad:
+    1. ExcellentRanking (Excelente): El exploit nunca colapsa el servicio (ej. inyecciones SQL o ejecución de comandos).
+    2. GreatRanking (Muy bueno): Cuenta con un objetivo por defecto y auto-detecta la versión adecuada antes de lanzarse.
+    3. GoodRanking (Bueno): Su objetivo por defecto está enfocado en el caso de uso más habitual de ese software.
+    4. NormalRanking (Normal): Es un exploit fiable, pero requiere una versión muy concreta y carece de una autodetección segura.
+    5. AverageRanking (Regular): Por lo general, es poco fiable o bastante difícil de ejecutar.
+    6. LowRanking (Bajo): Es casi imposible de explotar o su probabilidad de éxito es inferior al 50 % en plataformas comunes.
+    7. ManualRanking (Manual): Es inestable o requiere que el usuario configure el módulo de forma específica y manual para que funcione.
+
+- Cambiar el valor de un parámetro en el módulo actual:
+    set <parámetro> <valor>
+- Cambiar el valor de un parámetro para todos los módulos:
+    setg <parámetro> <valor>
+
+Parámetros más comunes:
+    · RHOSTS (Host remoto): La dirección IP o rango de red del sistema objetivo.
+    · RPORT (Puerto remoto): El puerto del sistema objetivo donde se ejecuta la aplicación vulnerable.
+    · PAYLOAD (Carga útil): El código que se enviará y ejecutará mediante el exploit.
+    · LHOST (Host local): La dirección IP de tu máquina atacante.
+    · LPORT (Puerto local): Un puerto libre en tu máquina atacante que se utilizará para recibir la conexión de retorno (reverse shell).
+    · SESSION (Sesión): El identificador único de una conexión ya establecida con el sistema objetivo. Se utiliza para lanzar módulos de post-explotación a través de esa misma conexión.
+
+- Limpiar el valor de todos los parámetros en el módulo actual:
+    unset all
+- Limpiar el valor de un parámetro en el módulo actual:
+    unset <parámetro>
+- Limpiar el valor de todos los parámetros para todos los módulos:
+    unsetg all
+- Limpiar el valor de un parámetro en el módulo actual:
+    unsetg <parámetro>
+
+- Ejecutar el módulo actual:
+    exploit [-z]
+    * Con el parámetro "-z" la sesión se ejecutará en segundo plano.
+
+Una vez que una vulnerabilidad ha sido explotada satisfactoriamente, se creará una sesión, que es un canal de comunicación entre el sistema objetivo y Metasploit.
+
+- Enviar una sesión a segundo plano:
+    background
+    CTRL + Z
+
+- Ver las sesiones activas:
+    sessions
+
+- Abrir una sesión en primer plano:
+    sessions -i <id_sesión>

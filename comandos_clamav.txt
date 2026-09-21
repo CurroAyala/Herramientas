@@ -1,0 +1,15 @@
+################################
+## COMANDOS BÁSICOS DE CLAMAV ##
+################################
+
+Actualizar repositorios de virus:
+    sudo freshclam
+
+Analizar directorio:
+    clamscan [opciones] <directorio>
+    Opciones:
+        -r para hacer análisis recursivo
+        --bell para hacer un sonido si detecta un virus
+
+Analizar el directorio de Descargas:
+    clamscan -r --bell ~/Descargas

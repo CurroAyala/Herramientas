@@ -1,0 +1,103 @@
+############################
+## COMANDOS CMD (WINDOWS) ##
+############################
+
+- Listar archivos y directorios del directorio actual:
+    dir [OPCIONES]
+
+    Opciones:
+    - "/a" para mostrar archivos y directorios ocultos
+    - "/s" para mostrar los archivos de todos los subdirectorios
+
+- Cambiar el directorio actual:
+    <dir>
+- Cambiar al directorio que precede al actual: cd ..
+
+- Mostrar el árbol de subdirectorios a partir del actual:
+    tree
+
+- Crear un directorio:
+    mkdir <dir>
+
+- Eliminar un directorio:
+    rmdir <dir>
+
+- Mostrar el contenido de un archivo:
+    type <archivo>
+
+- Copiar un archivo:
+    copy <dir>\<archivo> <dir_destino>\<nuevo_nombre>
+    * Si el directorio del archivo a copiar es el actual, no es necesario especificarlo.
+
+- Mover un archivo:
+    copy <dir>\<archivo> <dir_destino>
+    * Si el directorio del archivo a copiar es el actual, no es necesario especificarlo.
+
+- Eliminar un archivo:
+    del <archivo>
+    erease <archivo>
+
+- Mostrar la versión de Windows:
+    ver
+
+- Mostrar información del sistema:
+    systeminfo
+
+- Limpiar la consola:
+    cls
+
+- Mostrar información paginada:
+    <comando> | more
+
+- Mostrar información de un comando específico:
+    help <comando>
+    <comando> /?
+
+
+
+## COMANDOS BÁSICOS DE RED ##
+
+- Mostrar información de la red:
+    ipconfig
+
+- Comprobar la conexión con un host, enviando mensajes ICMP:
+    ping [OPCIONES] <IP_o_dominio>
+    * Ver opciones con: ping /?
+
+- Rastrear la ruta de red recorrida para llegar a un destino:
+    tracert [OPCIONES] <IP_o_dominio>
+    * Ver opciones con: tracert /?
+
+- Mostrar conexiones de red actuales y puertos en escucha:
+    netstat [OPCIONES]
+
+    Opciones principales:
+    - "-a" para mostrar todas las conexiones establecidas
+    - "-b" para mostrar el programa asociado a cada conexión y puerto
+    - "-o" para mostrar el PID de cada conexión
+    - "-n" para utilizar una forma numérica para las direcciones y puertos
+    * Ver más opciones con: netsat /?
+
+
+
+## COMANDOS DE GESTIÓN DE PROCESOS ##
+
+- Mostrar lista de procesos activos:
+    tasklist [OPCIONES]
+    * Ver opciones con tasklist /?
+
+- Terminar un proceso activo:
+    taskkill /PID <PID_del_dominio>
+
+
+
+## COMANDOS DE MANTENIMIENTO ##
+
+- Comprobar el sistema de archivos y volúmenes de disco en busca de errores:
+    chkdsk
+
+- Mostrar una lista de los controladores instalados:
+    driverquery
+
+- Escanear sistemas de archivos e intentar solucionar posibles errores:
+    sfc /scannnow

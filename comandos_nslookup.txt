@@ -1,0 +1,49 @@
+#############################
+COMÁNDOS BÁSICOS DE NSLOOKUP
+#############################
+
+Obtener la dirección IP (registro A o AAAA) de un dominio:
+    nslookup <dominio>
+
+Obtener el nombre de dominio asociado a una IP (registro PTR):
+    nslookup <IP>
+
+Consultar un dominio utilizando un servidor DNS específico:
+    nslookup <dominio> <servidor DNS>
+
+Consultar un registro específico de un dominio:
+    nslookup -type=<tipo> <dominio>
+
+    Tipos:
+        - A: dirección IPv4
+        - AAAA: dirección IPv6
+        - MX: correo electrónico
+        - TXT: texto libre
+        - NS: servidores de dominio
+        - CNAME: alias
+        - ANY: todos los registros
+
+
+#################
+MODO INTERACTIVO
+#################
+
+1. Entrar a la herramienta:
+        nslookup
+
+2. Ejecutar comandos:
+        · Escribir el dominio para resolver su IP.
+        · Cambiar el servidor DNS:
+            server <IP_SERVER_DNS>
+        · Cambiar el tipo de registro a resolver:
+            set type=<tipo>
+            set q=<tipo>
+        · Activar modo depuración:
+            set debug
+        · Desacivar modo depuración:
+            set nodebug
+        · Mostrar información de forma exhaustiva:
+            set d2
+
+3. Salir de la herramienta:
+        exit

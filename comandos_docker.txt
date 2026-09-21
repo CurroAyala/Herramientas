@@ -1,0 +1,210 @@
+###########################
+COMÁNDOS BÁSICOS DE DOCKER
+###########################
+
+Nota: los argumentos entre corchetes ([]) son opcionales o sirven configurar los comandos.
+
+- Ver imágenes disponibles:
+	docker images
+
+- Descargar imagen del repositorio de Docker:
+	docker pull <nombre_imagen>
+
+- Eliminar una imagen:
+	docker rmi id_imagen
+
+- Ejecutar un contenedor:
+	docker run [opciones] <nombre_imagen>
+		
+	Opciones:
+		- "-i": ejecuta el contenedor en modo interactivo.
+		- "-t": asigna un terminal virtual al contenedor.
+		- "-it": combina los dos anteriores, permitiendo interactuar con un contenedor a través de una terminal.
+		- "-rm": indica que el contenedor debe ser eliminado automáticamente cuando se detiene.
+		- "-d": ejecuta el contenedor en modo "detached", lo que significa que se ejecutará en segundo plano.
+		- "-p <puerto_local>:<puerto_contenedor>": mapea el puerto local con el puerto del contenedor.
+		- "--name <nombre>": asigna un nombre al contenedor.
+		- "-v <directorio_local>:<directorio_contenedor>": mapea el directorio local con el directorio del contenedor (BIND MOUNT).
+		- "-e <NOMBRE_VARIABLE>=<valor>": define variables de entorno dentro del contenedor.
+		- "--network <nombre_red>": indica que el contendor pertenece a la red.
+
+- Ejecutar un contenedor de forma interactiva:
+	docker run -it <nombre_imagen>
+	
+	La opción "-it" combina dos parámetros: `-i` (interactivo) y `-t` (terminal), permitiendo interactuar con el contenedor a través de una terminal.
+	Para ejecutar contenedores de imágenes de Ubuntu, conviene añadir el comando la palabra "bash" para indicar que tras iniciar Ubuntu abra una terminal. Esto suele ser así
+	por defecto, pero puede variar según la versión.
+
+- Ejecutar un contenedor en segundo plano:
+	docker run -td <nombre_imagen>
+
+- Acceder a un contendor en segundo plano:
+	docker exec -ti <id_contenedor>
+
+- Detener un contenedor:
+	docker stop <id_contenedor>
+
+- Reiniciar un contenedor:
+	docker restart <id_contendor>
+
+- Ver los contenedores en ejecución:
+	docker ps
+
+- Ver todos los contenedores, detenidos incluidos:
+	docker ps -a
+
+- Eliminar contenedor:
+	docker rm <id_contendor>
+
+- Eliminar todos los contenedores detenidos de una vez:
+	docker rm $(docker ps -aq)
+
+- Crear un volumen:
+	docker volume create <nombre_volumen>
+	
+	Para utilizar el volumen en la ejecución de un contendedor se utiliza la opción: "-v <nombre_volumen>:<directorio_contendor>"
+	De esta forma, se consigue persistir archivos incluso si el contenedor se detiene o se elimina.
+
+- Listar volúmenes:
+	docker volume ls
+
+- Borrar un volumen: 
+	docker volume rm <nombre_volumen>
+
+
+##########################
+DOCKERIZAR UNA APLICACIÓN
+##########################
+
+¡! Importante: Configurar las variables de entorno (archivo .env)
+¡! Asegurar que se ignora el módulo webhook:
+	echo "webhook" > .moduleignore
+
+1. Crear el directorio docker (desde la carpeta raiz del proyecto):
+	mkdir -p docker/images
+
+2. Crear el archivo Dockerfile ("receta" para crear la imagen individual de docker):
+	nano docker/images/Dockerfile
+	
+	FROM <imagen_base>								(indica la imagen base sobre la que se construirá la imagen del proyecto)
+	WORKDIR /app									(indica el directorio de trabajo dentro del contenedor, no confundir con el directorio app/)
+	COPY . .									(copia todos los archivos del proyecto dentro de la carpeta /app del contenedor)
+	RUN pip install --no-cache-dir -r requirements.txt				(ejecuta el comando "pip install ..." durante la construcción de la imagen)
+	CMD ["flask", "run", "--host=0.0.0.0", "--port=5000", "--reload", "--debug"]	(ejecuta el comando una vez iniciado el contenedor)
+
+Nota 1: RUN ejecuta comandos durante la construcción de la imagen y CMD una vez iniciado el contenedor. Solo puede haber 1 comando CMD.
+Nota 2: los comandos ejecutados con RUN y CMD son independientes en cada proyecto, en este caso son para una aplicación flask.
+
+3. Construir la imagen (desde la raiz del proyecto):
+	docker build -t <nombre_imagen>:<tag_imagen> -f docker/images/Dockerfile .
+
+
+
+#####################
+CREAR REDES INTERNAS
+Las redes internas se utilizan para que dos o más contenedores se comuniquen.
+#####################
+
+1. Crear red:
+	docker network create <nombre_red>
+
+2. Listar redes:
+	docker network ls
+
+Nota: para que los contenedores se comuniquen, al ejecutarlos hay que indicarles que pertenecen a la red creada (comando "--network").
+
+
+
+##########################################
+ORQUESTACIÓN DE SERVICIOS: Docker Compose
+##########################################
+(Coordinar varios contenedores)
+
+1. Crear el archivo docker-compose.yml en el directorio docker/ del proyecto.
+	Ejemplo:
+		services:
+		  web:
+		    container_name: web_app_container
+		    env_file:
+		      - ../.env
+		    ports:
+		      - "5000:5000"
+		    depends_on:
+		      - db
+		    build:
+		      context: ../
+		      dockerfile: docker/images/Dockerfile
+		    networks:
+		      - uvlhub_network
+		    entrypoint: ["/app/scripts/wait-for-db.sh"]
+		    command: ["flask", "run", "--host=0.0.0.0", "--port=5000", "--reload", "--debug"]
+		
+		  db:
+		    container_name: mariadb_container
+		    image: mariadb:12.0.2
+		    env_file:
+		      - ../.env
+		    volumes:
+		      - db_data:/var/lib/mysql
+		    networks:
+		      - uvlhub_network
+	
+		volumes:
+		  db_data:
+
+		networks:
+		  uvlhub_network:
+
+2. Ejecutar los contenedores definidos con Docker Compose:
+	docker compose -f docker/docker-compose.yml up -d --build
+	
+	La opción "-d" sirve para iniciar los contenedores en secundo plano.
+	La opción "--build" sirve para construir las imágenes de los contenedores si estas no existen, y para forzar su reconstrucción si ya existieran.
+
+3. Parar los contenedores definidos con Docker Compose:
+	docker compose -f docker/docker-compose.yml down
+
+
+
+##############################
+EXPLICACIÓN A MODO DE RESUMEN
+##############################
+Al arrancar un contenedor Docker, siempre se ejecuta un único comando final. Lo que hacen ENTRYPOINT, CMD y command (de Compose) es decidir qué comando será ese y con qué argumentos.
+
+- CMD → “qué hacer por defecto”
+	Está en el Dockerfile y es el comando que Docker ejecuta si no se indica otra cosa.
+
+- ENTRYPOINT → “qué se ejecuta siempre”
+	También va en el Dockerfile pero se puede sobreescribir en el docker-compose.yml. Define el programa o script principal que siempre se ejecuta.
+
+Nota: Normalmente, el entrypoint se combina con CMD de la forma: "ejecuta esto (entrypoint) y luego este comando final (cmd)".
+
+- command (de docker-compose.yml) → “sobrescribe el CMD”
+	En docker-compose.yml, el campo command reemplaza al CMD del Dockerfile, pero no al ENTRYPOINT.
+
+
+COMBINACIÓN DE ELEMENTOS
+	1. Lee el YAML como un diccionario
+	2. Ejecuta todo lo que haya en un Dockerfile EXCEPTUANDO directivas ENTRYPOINT y CMD.
+	3. Monta el volumen o los volúmenes de ese contenedor (si procede)
+	4. Y ahora viene el detalle:
+		- Si se está levantando un contenedor a través de docker-compose, va a ejecutar los entrypoints y commands definidos en ese docker-compose.
+		- Un entrypoint definido en un docker-compose va a sustituir a un entrypoint definido en el Dockerfile.
+		- Un command definido en un docker-compose va a sustituir a un CMD definido en el Dockerfile.
+
+
+
+###########################################
+CREAR UN VOLUMEN DE TRABAJO CON BIND MOUNT
+El objetivo de este volumen es sincronizar el código de desarrollo del host con el código interno del contenedor,
+para evitar tener que reconstruir la imagen a cada cambio de línea.
+###########################################
+
+1. En el archivo docker-compose.yml, añadir lo siguiente en el servicio de la aplicación en desarrollo:
+	volumes:
+		- <carpeta_local_proyecto>:<carpeta_trabajo_contenedor>
+
+Nota: normalmente la línea quedaría tal que
+	- ../:/app
+	siendo "/app" el espacio de trabajo definido en el Dockerfile.
+

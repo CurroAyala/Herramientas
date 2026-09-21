@@ -1,0 +1,64 @@
+##############################
+## COMANDO BÁSICOS DE LINUX ##
+##############################
+
+- Listar el contenido de un directorio:
+    Directorio actual: ls [OPCIONES]
+    Directorio concreto: ls [OPCIONES] <dir>
+    * Para directorios hijos del actual, no es necesario poner la ruta común.
+
+    Opciones:
+    - "-a" para mostrar archivos y directorios ocultos
+
+- Cambiar el directorio actual:
+    Cambiar al directorio de inicio: cd
+    Cambiar a un directorio concreto: cd <dir>
+    Cambiar al directorio que precede al actual: cd ..
+
+- Mostar el contenido de un archivo en la terminal:
+    cat <archivo>
+
+- Mostar la ruta completa del directorio actual:
+    pwd
+
+- Buscar un archvo por nombre:
+    find -name <nombre>
+    * Se pueden utilizar patrones en el nombre indicado para la búsqueda.
+
+- Buscar en un archivo un contenido:
+    grep "<contenido>" <archivo>
+- Buscar en el directorio actual y en sus subdirecotrios archivos con un contenido concreto:
+    grep -R "<contenido>"
+
+- Ver métricas de un archivo:
+    wc [OPCIÓN] <archivo>
+
+    Opciones bque ya existe (ásicas:
+        - "-c" para mostrar el número de bytes
+        - "-m" para mostrar el número de caracteres
+        - "-l" para mostrar el número de líneas
+        - "-w" para mostrar el número de palabras
+
+- Borrar un archivo o directorio:
+    rm [OPCIONES] <archivo/directorio>
+
+    Opciones:
+        - "-f" para descartar archivos y argumentos que no existan
+        - "-i" para preguntar confirmación antes de cada borrado
+        - "-r" para borrar directorios no vacíos y su contenido
+
+
+
+## OPERADORES BÁSICOS
+
+- Ejecutar un comando en segundo plano:
+    <comando> &
+
+- Encadenamiento condicional (cada comando se ejecuta si el anterior fue exitoso):
+    <comando1> && <comando2> && ...
+
+- Tomar la salida de texto que un comando muestra en consola y volcarla en un archivo, sobreescribiéndolo si ya existe:
+    <comando> > <archivo>
+
+- Tomar la salida de texto que un comando muestra en consola y volcarla al final de un archivo (si no existe, lo crea):
+    <comando> >> <archivo>

@@ -1,0 +1,56 @@
+###############################
+# COMANDOS BÁSICOS DE VAGRANT #
+###############################
+
+1. Inicializar MV en el directorio actual:
+	vagrant init <nombre_box>		# ejemplo: vagrant init ubuntu/trusty32
+
+Nota: se generará el archivo Vagrantfile, que contiene la configuración de la MV.
+
+2. Levantar MV del directorio actual:
+	vagrant up
+
+3. Recargar MV del directorio actual:
+	vagrant reload 
+
+4. Ejecutar instrucción en la MV desde el host:
+	vagrant ssh -c '<instrucción>'		# ejemplo: vagrant ssh -c 'hostnamectl'
+
+5. Ver estado de las MV:
+	vagrant global-status
+
+6. Entrar en la MV del directorio actual:
+	vagrant ssh
+
+7. Salir de la MV:
+	exit
+
+8. Apagar MV:
+	vagrant halt [opciones]
+		Opciones:
+			- "-f": simula apagado forzado
+
+9. Eliminar MV del directorio local:
+	vagrant destroy
+
+
+####################
+# GESTIÓN DE BOXES #
+####################
+Las boxes son las imágenes de las máquinas virtuales preconfiguradas.
+
+1. Listar boxes:
+	vagrant box list
+
+2. Eliminar una box:
+	vagrant box remove <nombre_box>
+
+
+###########################
+# APROVISIONAMIENTO DE MV #
+###########################
+Aprovisionar (en el contexto de las máquinas virtuales) es el proceso de instalar y configurar, de forma automática, el software necesario en una máquina virtual para que pueda ejecutar una aplicación.
+Tipos:
+	- Script de shell (archivo .sh): conjunto de comandos de terminal.
+	- Ansible: archivo de configuración llamado 'playbook.yml'. Ansible tiene un enfoque declarativo, idempotente y escalable.
+

@@ -1,0 +1,109 @@
+###############
+CONFIGURAR SSH
+###############
+
+git config --global user.name "Nombre"
+git config --global user.email "email@ejemplo.com"
+
+ssh-keygen -t ed25519 -C "email@ejemplo.com"
+
+eval "$(ssh-agent -s)" --> debe salir el número de proceso del agente de git: Agent PID <número>
+
+ssh-add ~/.ssh/id_ed25519
+
+cat ~/.ssh/id_ed25519.pub --> pegar resultado en la configuración de SSH de GitHub
+
+ssh -T git@github.com
+
+
+########################
+COMANDOS BÁSICOS DE GIT
+########################
+
+- git clone <url>: clona en local un repositorio
+
+- git status [opciones]: muestra información sobre el repositorio
+	Opciones:
+		-s para mostrar la información resumida
+		-b para mostrar la rama actual
+
+- git add <archivo>: prepara un archivo concreto para hacer commit, es decir, lo añade al área de staging.
+- git add .: añade al área de staging todos los archivos modificados.
+
+- git reset [opciones] <file>: deshace cambios moviendo la referencia de una rama a un commit anterior.
+	Opciones:
+		--soft para dejar el archivo en el área de staging.
+		--mixed para dejar el archvio fuera del área de staging, hay que volver a escribir el comando git add. Es el comando por defecto.
+		--hard para eliminar completamente los cambios del archivo.
+
+- git commit [-a] [-m <mensaje del commit>]
+	-a para agregar automáticamente todos los archivos modificados y rastreados al área de staging antes de realizar el commit
+	-m para añadir una descripción al commit
+
+- git log [opciones]: permite revisar el historial de cambios del repositorio.
+	Opciones:
+		--stats para imprimir después de cada confirmación una lista de archivos modificados y cuántas líneas se han añadido y eliminado en cada uno de ellos
+		-p -2 para mostrar después de cada entrada las diferencias que le corresponden
+		--pretty=oneline para imprimir cada confirmación en una sola línea
+
+- git config [ámbito] <nombre-variable> <valor>: configurar y recuperar la configuración de Git.
+	Ámbitos: --global | --local
+
+- git push [remote] [rama]: sube los cambios locales al repositorio remoto.
+
+- git push -u origin <nombre_rama>: sube una rama al repositorio remoto.
+
+- git push origin --delete <nombre_rama>: elimina una rama remota.
+
+- git pull [remote] [rama]: descarga los cambios en el estado actual.
+
+- git fetch: actualiza el repositorio local.
+
+- git checkout --file: descarta los cambios no confirmados en un archivo específico y lo restaura a su última versión en el repositorio.
+
+- git checkout [-b] <rama>: cambia la rama actual a rama. Si se usa la opción -b, si no existe la rama, la crea automáticamente a partir de al actual.
+
+- git branch [opciones] <nombre_rama>: crea una nueva rama con el nombre dado, pero no cambia a ella.
+	Opciones:
+		-d para eliminar una rama local si ya ha sido fusionada con otra
+		-D para forzar la eliminación de una rama local
+
+- git branch [opciones]: lista las ramas locales
+	Opciones:
+		-r para listar las ramas remotas
+		-a para listar todas (locales y remotas)
+
+- git merge [--no-ff] <rama de la que hacer merge>: hace merge desde la rama especificada a la actual.
+	Si se utiliza la opción --no-ff, se fuerza a Git a hacer un commit del merge, lo cual es bastante recomendable para mantener el historial.
+
+- git rebase <rama>: toma los cambios de la rama actual y los "pone" encima de la rama especificada, como si hubieran ocurrido después de los cambios en esa rama.
+
+- git tag: añade un alias a un commit específico.
+
+
+### CHERRY PICK: consiste en aplicar un cambio específico (un commit) de una rama a otra, sin fusionar toda la rama.
+
+- git cherry-pick <commit1_hash> <commit2_hash>...: trae a la rama actual los commits de los hashs, puede ser 1 solo commit.
+
+- git cherry-pick --continue: continua el proceso tras arreglar los conflictos.
+
+- git cherry-pick --abort: aborta el proceso.
+
+
+##########################
+COMANDOS AVANZADOS DE GIT
+##########################
+
+- git revert [opciones] <commit_hash>: crea un commit nuevo deshaciendo el commit del hash especificado.
+	Opciones:
+		--no-edit: para no editar el mensaje
+
+- git diff: lista los cambios no confirmados.
+- git diff --staged: lista los cambios en el área de staging.
+- git diff <commit1_hash> <commit2_hash>: compara commits.
+- git diff <rama1> <rama2>: compara ramas.
+
+- git stash: guarda temporalmento los cambios no confirmados.
+- git satsh list: lista todos los stashes almacenados.
+- git stash apply: aplica un cambio guardado, sin sacarlo del stash.
+- git stash pop: aplica un cambio guardado, sacándolo del stash.
