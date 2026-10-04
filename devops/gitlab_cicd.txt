@@ -1,0 +1,259 @@
+##########################
+BÁSICOS DE GITLAB CI/CD
+##########################
+
+El pipeline se define en el archivo .gitlab-ci.yml, ubicado generalmente en la carpeta raíz del proyecto.
+
+
+###########################
+ESTRUCTURA DEL PIPELINE
+###########################
+
+- [Opcional] default: indica configuraciones que heredan todos los jobs, entre otras:
+	- image: indica la imagen de Docker que se utilizará para ejecutar los comandos del pipeline. Dentro de default es la imagen por defecto para todos los jobs; si se declara en un job concreto, sobrescribe la del default.
+	- tags: (busca y asigna el job a un runner* que tenga las etiquetas indicadas)
+	    - <runner-1>
+	    - ...
+	- cache:
+	    key:	(condiciones para renovar la caché: cambios en archivos o variables)
+	    paths:		(qué se cachea)
+	      - <archivo_o_ruta>
+	      - ...
+
+	Si en un job se declara explícitamente una clave, el valor se sobreescribirá solo para dicho job. La mayoría de claves pueden definirse a nivel global y/o específicamente para un job.
+
+* Un runner es una máquina que ejecuta físicamente los jobs del pipeline. Generalmente, cada job se ejecuta en un contenedor de Docker, aunque el runner puede ser una máquina física o un pod temporal en un clúster de Kubernetes.
+
+- [Opcional] workflow: controla el ciclo de vida del pipeline en su totalidad.
+	Ejemplo:
+		workflow:
+		  name: "Pipeline para: $CI_COMMIT_TITLE"	(pone un nombre al pipeline)
+		  rules:	(decide si el pipeline se ejecuta o se ignora, según unas condiciones)
+		    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+		    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+		    - when: never
+
+	En la sección rules, las condiciones se evalúan en orden descendente, parando el flujo cuando una condición se cumple (ahí ya no se evalúan el resto).
+	En este caso, solo se ejecutará en dos situaciones: dentro de un Merge Request o tras integrar o hacer push directo en la rama principal. La última condición (when: never) niega cualquier otro caso.
+
+- stages: indica las etapas (stages) del pipeline y su orden.
+	Si se omite esta sección, se aplicarán las etapas predefinidas (en este orden):
+		a. .pre
+		b. build
+		c. test
+		d. deploy
+		e. .post
+
+	No es obligatorio declarar estas etapas predefinidas (aunque sí recomendable), pero si se añaden nuevas (por ejemplo: security) o se altera su orden, sí será necesario hacerlo.
+	Ejemplo:
+		stages:
+		  - build
+		  - test
+
+Nota: si un job usa un stage que no está en la lista "stages" (o en las predefinidas), el pipeline da error de configuración.
+
+
+###########################
+JOBS
+###########################
+
+Job: representa una tarea que debe realizarse en una etapa, como compilar o ejecutar los tests.
+
+Esquema básico:
+
+	<contexto>:<nombre-job>:
+	  stage: <etapa>
+	  [opcional] image: <imagen-específica>		(recomendable fijar versión, no usar :latest)
+	  variables:	(declara variables de entorno. Puede definirse también a nivel global, pero fuera de la clave default)
+	    NOMBRE_VARIABLE: "<valor>"
+	  needs:	(declara las dependencias del job)
+	    - <dependencia-1>
+	    - ...
+	  before_script:	(comandos secundarios a realizar antes)
+	    - <acción-1>
+	    - ...
+	  script:	(comandos principales del job)
+	    - <acción-1>
+	    - ...
+	  after_script:		(comandos secundarios a realizar después)
+	    - <acción-1>
+	    - ...
+	  rules:	(mismo funcionamiento que para el global, pero para un job)
+	    - <condición-1>
+	    - ...
+	  artifacts:	(sirve para guardar archivos o directorios, enviándolos a GitLab)
+	    paths:		(rutas de lo que se quiere guardar)
+	      - <ruta-1>
+	      - ...
+	    expire_in: <tiempo-de-vida>
+	    when: <cuándo-guardar>		(on_success, always, on_failure...)
+	  cache:
+	    key:	(condiciones para renovar la caché: cambios en archivos o variables)
+	    paths:		(qué se cachea)
+	      - <archivo_o_ruta>
+	      - ...
+
+
+
+###########################
+MATRICES
+Sirven para generar y ejecutar múltiples variaciones de un mismo job en paralelo sin duplicar código.
+###########################
+
+Ejemplo:
+
+	.os-arch-matrix:	(nombre de la matriz. El punto la oculta para que no se ejecute como un job)
+	  parallel:		(indica que los jobs derivados de esta configuración deben ser paralelos)
+	    matrix:
+	      - OS: [ubuntu, alpine]	(primer elemento de la matriz)
+	        ARCH: [amd64, arm64]	(segundo elemento de la matriz)
+
+GitLab genera automáticamente todas las combinaciones posibles de los valores de los elementos de la matriz. En este caso:
+	ubuntu - amd64
+	ubuntu - arm64
+	alpine - amd64
+	alpine - arm64
+
+Para usar la matriz en un job:
+
+	build:		(job en el que se va a usar la matriz)
+	  script: echo "Testing $OS on $ARCH"	(ejecuta el comando usando los valores de cada combinación de la matriz)
+	  parallel: !reference [.os-arch-matrix, parallel]		(indica que copie el bloque parallel de la matriz)
+
+
+###########################
+COMPONENTS
+Archivos .yml con bloques reutilizables que se incluyen en otro pipeline como si fueran una función.
+###########################
+
+Desde el pipeline se puede llamar al componente asignándole valores determinados a las variables que necesita, mediante los inputs.
+
+1. Crear el componente.
+	Ejemplo (.gitlab/ci/scanner.yml):
+		spec:	(cabecera de especificación del archivo, indica que es un componente)
+		  inputs:	(lista los parámetros de entrada del componente)
+		    environment:	(parámetro 1: en una función sería el nombre del argumento, no el valor)
+		      default: production	(valor por defecto del parámetro 1)
+		    job-stage:		(parámetro 2)
+		      default: test		(valor por defecto del parámetro 2)
+		---		(separador estándar. Divide la cabecera de la configuración del cuerpo, donde están los jobs)
+		scan-website:	(job 1)
+		  stage: $[[ inputs.job-stage ]]	(le da el valor del input job-stage a stage)
+		  script: ./scan-website $[[ inputs.environment ]]		(al ejecutar el script, utiliza el valor del input environment)
+
+2. Llamar al componente desde un pipeline mediante la directiva "include" (es una directiva global, no un job).
+	Ejemplo, suponiendo que el componente anterior está en .gitlab/ci/scanner.yml:
+		include:	(palabra reservada que incluye archivos externos)
+		  - local: .gitlab/ci/scanner.yml	(ruta del archivo dentro del propio repositorio)
+		    inputs:		(asignación de valores a los inputs. Si se omite entero, todos tendrán su valor por defecto)
+		      environment: pre-production	(le da valor al input <environment>)
+
+Nota: la clave "component:" se reserva para componentes publicados en un catálogo, con la forma <host>/<ruta-proyecto>/<nombre>@<versión>. Para un archivo del mismo repositorio se usa "local:".
+
+
+###########################
+GESTIÓN DE SECRETOS (.env en GitLab)
+###########################
+
+Para utilizar variables de entorno en tiempo de ejecución durante el pipeline de CI/CD, se declaran (dentro del proyecto) en: Settings > CI/CD > Variables
+
+Se puede añadir cada variable de forma individual o a través de un archivo (tipo "File"), al que se llama mediante $<nombre-dado>, siendo <nombre-dado> el valor del campo "Key" a la hora de subirlo.
+
+¡! Importante: al subir el archivo .env, hay que proteger su contenido (visibilidad "Masked and hidden", si GitLab lo permite para ese valor).
+
+
+###########################
+DESPLIEGUE EN SERVIDOR
+(EJEMPLO)
+Nota: pipeline independiente para backend y frontend.
+###########################
+
+TAREAS MANUALES (solo una vez, antes de ejecutar el pipeline):
+
+	1. Subir el .env resuelto a GitLab: Proyecto > Settings > CI/CD > Variables (tipo File).
+	2. Añadir las siguientes variables en Proyecto > Settings > CI/CD > Variables:
+		- SSH_PRIVATE_KEY
+		- SSH_KNOWN_HOSTS
+		- SERVER_IP
+		- SERVER_USER
+
+FLUJO DEL DESPLIEGUE:
+
+	- JOB 1: DOCKER BUILD. Construye la imagen del contenedor y la sube al servidor de imágenes (usar versionado).
+	(Servidor de imágenes: Docker Hub o GitLab Container Registry)
+
+	- JOB 2: DEPLOY. Se conecta por SSH al servidor de despliegue, envía por scp el .env y el docker-compose, y levanta la imagen del contenedor creado (*).
+
+* El compose a utilizar en el servidor no puede construir la imagen manualmente, sino que debe apuntar al servidor de imágenes:
+	image: registry.gitlab.com/usuario/repositorio:${IMAGE_TAG}
+
+
+1. Ejemplo de la etapa de construcción de la imagen:
+
+	build_backend:
+	  stage: build
+	  image: docker:latest
+		--> (imagen estándar para ejecutar comandos de Docker)
+	  rules:
+	    - if: $CI_COMMIT_BRANCH == "master"
+	  services:
+	    - docker:dind
+			--> (como el runner es un contenedor, se necesita el servicio "docker-in-docker" para tener el Daemon de Docker)
+	  script:
+	    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+			--> (inicio de sesión en el Registry de GitLab usando sus variables predefinidas, que GitLab crea temporalmente para cada job)
+	    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .
+			--> (creación de la imagen del contenedor)
+	    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+			--> (subida al Registry de GitLab)
+
+Nota 1: el nombre de la rama (master) hay que adaptarlo al proyecto. Es más portable usar $CI_DEFAULT_BRANCH.
+Nota 2: aunque aquí se usa :latest por simplicidad, lo recomendable es fijar versión (por ejemplo, docker:27 y docker:27-dind, que deben coincidir).
+Nota 3: pasar la contraseña con "-p" la deja visible en la línea de comandos. Alternativa más segura:
+	echo "$CI_REGISTRY_PASSWORD" | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+
+
+2. Ejemplo de la etapa de despliegue en un servidor:
+
+	deploy_backend:
+	  stage: deploy
+	  image: alpine:latest
+	  rules:
+	    - if: $CI_COMMIT_BRANCH == "master"
+	  before_script:
+		--> (antes de los comandos principales, se prepara el runner para la conexión SSH)
+	    - apk add --no-cache openssh-client
+			--> (instala ssh en el runner de forma limpia)
+	    - eval $(ssh-agent -s)
+			--> (inicia el agente SSH en segundo plano)
+	    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+			--> (carga la clave privada del servidor en el agente)
+	    - mkdir -p ~/.ssh && echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+			--> (crea la carpeta de configuración SSH y registra la huella del servidor)
+	  script:
+	    - cp $ENV_PRODUCCION .env
+			--> (copia el archivo de variables de entorno de GitLab al runner y lo llama .env)
+	    - echo "IMAGE_TAG=$CI_COMMIT_SHA" >> .env
+			--> (añade al .env el identificador del commit, para usarlo como versión)
+	    - scp docker-compose.prod.yml $SERVER_USER@$SERVER_IP:/proyecto/backend/docker-compose.yml
+			--> (copia por ssh el docker-compose de despliegue al servidor)
+	    - scp .env $SERVER_USER@$SERVER_IP:/proyecto/backend/.env
+			--> (copia por ssh el .env al servidor)
+	    - |
+	      ssh $SERVER_USER@$SERVER_IP "
+			--> (abre una conexión remota con el servidor)
+	        cd /proyecto/backend
+	        docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+				--> (inicia sesión en el Registry de GitLab para que el compose pueda descargar la imagen)
+	        docker compose pull
+				--> (descarga la imagen)
+	        docker compose up -d --remove-orphans
+				--> (levanta el contenedor con la nueva versión, eliminando contenedores huérfanos)
+	        docker logout $CI_REGISTRY
+				--> (cierra la sesión del Registry de GitLab)
+	        docker image prune -af
+				--> (elimina todas las imágenes no utilizadas para liberar espacio)
+	      "
+
+Nota 1: el stage de este job es "deploy" (el predefinido). Si se quisiera usar otro nombre (por ejemplo "deployment"), habría que declararlo en "stages".
+Nota 2: "docker image prune -af" borra TODAS las imágenes sin usar del servidor, incluidas las de otros proyectos que no tengan un contenedor en marcha.

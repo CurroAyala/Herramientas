@@ -13,6 +13,7 @@ Repositorio personal con apuntes, chuletas (*cheatsheets*) y ejemplos.
 ### ⚙️ DevOps
 * [Docker](devops/comandos_docker.txt) – Gestión de contenedores, imágenes, volúmenes y Docker Compose.
 * [Git](devops/comandos_git.txt) – Flujos de trabajo, ramas, resolución de conflictos y comandos habituales.
+* [GitLab CI/CD](devops/gitlab_cicd.txt) - Creación de pipelines para GitLab.
 
 ### 🌐 Redes
 * [Nmap](redes/comandos_nmap.txt) – Escaneo de puertos, descubrimiento de hosts y detección de servicios.
@@ -39,6 +40,7 @@ Repositorio personal con apuntes, chuletas (*cheatsheets*) y ejemplos.
 ├── devops/
 │   ├── comandos_docker.txt
 │   └── comandos_git.txt
+│   └── gitlab_cicd.txt
 ├── red/
 │   ├── comandos_nmap.txt
 │   └── comandos_nslookup.txt
