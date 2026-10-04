@@ -20,7 +20,7 @@ ESTRUCTURA DEL PIPELINE
 	      - <archivo_o_ruta>
 	      - ...
 
-	Si en un job se declara explícitamente una clave, el valor se sobreescribirá solo para dicho job. La mayoría de claves pueden definirse a nivel global y/o específicamente para un job.
+	La mayoría de las claves de default también pueden definirse dentro de un job. En este caso, el valor se sobreescribirá solo para dicho job.
 
 * Un runner es una máquina que ejecuta físicamente los jobs del pipeline. Generalmente, cada job se ejecuta en un contenedor de Docker, aunque el runner puede ser una máquina física o un pod temporal en un clúster de Kubernetes.
 
