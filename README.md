@@ -19,6 +19,10 @@ Repositorio personal con apuntes, chuletas (*cheatsheets*) y ejemplos.
 * [Nmap](redes/comandos_nmap.txt) – Escaneo de puertos, descubrimiento de hosts y detección de servicios.
 * [Nslookup](redes/comandos_nslookup.txt) – Consultas DNS y resolución de nombres.
 
+### 📜 _Scripting_
+* [William Shotts - The Linux Command Line](scripting/William%20Shotts%20-%20The%20Linux%20Command%20Line.pdf)
+* [Ejemplos prácticos](scripting/Ejemplos%20de%20scripts/)
+
 ### 🔒 Seguridad
 * [ClamAV](seguridad/comandos_clamav.txt) – Escaneo antivirus desde la terminal y actualización de firmas.
 * [Metasploit](seguridad/comandos_metasploit.txt) – Uso básico de `msfconsole` y búsqueda y personalización de módulos.
@@ -41,9 +45,13 @@ Repositorio personal con apuntes, chuletas (*cheatsheets*) y ejemplos.
 │   ├── comandos_docker.txt
 │   └── comandos_git.txt
 │   └── gitlab_cicd.txt
-├── red/
+├── redes/
 │   ├── comandos_nmap.txt
 │   └── comandos_nslookup.txt
+├── scripting/
+│   ├── William Shotts - The Linux Command Line.pdf
+│   └── Ejemplos de scripts/
+│       └── ...
 ├── seguridad/
 │   ├── comandos_clamav.txt
 │   └── comandos_metasploit.txt
