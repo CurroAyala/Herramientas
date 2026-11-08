@@ -6,6 +6,10 @@ Repositorio personal con apuntes, chuletas (*cheatsheets*) y ejemplos.
 
 ## 📂 Contenido
 
+### 🛢️ Bases de datos
+* [Introducción a SQL](basesDeDatos/Introducción%20a%20SQL.pdf) - Apuntes universitarios de SQL.
+* [SQL](basesDeDatos/comandos_sql.txt) - Comandos básicos de SQL, a partir de los apuntes universitarios.S
+
 ### 🖥️ Consola
 * [CMD](consola/comandos_cmd.txt) – Comandos básicos y administración en el Símbolo del sistema de Windows.
 * [Linux](consola/comandos_linux.txt) – Comandos esenciales de Bash/sh, gestión de paquetes, permisos y utilidades del sistema.
@@ -38,6 +42,9 @@ Repositorio personal con apuntes, chuletas (*cheatsheets*) y ejemplos.
 
 ```text
 .
+├── basesDeDatos/
+│   ├── Introducción a SQL.pdf
+│   └── comandos_sql.txt
 ├── consola/
 │   ├── comandos_cmd.txt
 │   └── comandos_linux.txt
