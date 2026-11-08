@@ -20,7 +20,7 @@ Nota: los argumentos entre corchetes ([]) son opcionales o sirven configurar los
 		- "-i": ejecuta el contenedor en modo interactivo.
 		- "-t": asigna un terminal virtual al contenedor.
 		- "-it": combina los dos anteriores, permitiendo interactuar con un contenedor a través de una terminal.
-		- "-rm": indica que el contenedor debe ser eliminado automáticamente cuando se detiene.
+		- "--rm": indica que el contenedor debe ser eliminado automáticamente cuando se detiene.
 		- "-d": ejecuta el contenedor en modo "detached", lo que significa que se ejecutará en segundo plano.
 		- "-p <puerto_local>:<puerto_contenedor>": mapea el puerto local con el puerto del contenedor.
 		- "--name <nombre>": asigna un nombre al contenedor.
@@ -28,18 +28,12 @@ Nota: los argumentos entre corchetes ([]) son opcionales o sirven configurar los
 		- "-e <NOMBRE_VARIABLE>=<valor>": define variables de entorno dentro del contenedor.
 		- "--network <nombre_red>": indica que el contendor pertenece a la red.
 
-- Ejecutar un contenedor de forma interactiva:
-	docker run -it <nombre_imagen>
-	
-	La opción "-it" combina dos parámetros: `-i` (interactivo) y `-t` (terminal), permitiendo interactuar con el contenedor a través de una terminal.
-	Para ejecutar contenedores de imágenes de Ubuntu, conviene añadir el comando la palabra "bash" para indicar que tras iniciar Ubuntu abra una terminal. Esto suele ser así
-	por defecto, pero puede variar según la versión.
+- Ejecutar en segundo plano un contenedor de un SO o de una aplicación interactiva que exija terminal:
+	docker run -itd <nombre_imagen>
 
-- Ejecutar un contenedor en segundo plano:
-	docker run -td <nombre_imagen>
-
-- Acceder a un contendor en segundo plano:
-	docker exec -ti <id_contenedor>
+- Acceder a un contendor de un SO que está en segundo plano:
+	docker exec -it <id_contenedor> <consola>
+	* Para ver la consola, consultar la columna COMMAND al listar los contenedores en ejecución. Comúnmente, sh o bash.
 
 - Detener un contenedor:
 	docker stop <id_contenedor>
@@ -71,140 +65,311 @@ Nota: los argumentos entre corchetes ([]) son opcionales o sirven configurar los
 - Borrar un volumen: 
 	docker volume rm <nombre_volumen>
 
-
-##########################
-DOCKERIZAR UNA APLICACIÓN
-##########################
-
-¡! Importante: Configurar las variables de entorno (archivo .env)
-¡! Asegurar que se ignora el módulo webhook:
-	echo "webhook" > .moduleignore
-
-1. Crear el directorio docker (desde la carpeta raiz del proyecto):
-	mkdir -p docker/images
-
-2. Crear el archivo Dockerfile ("receta" para crear la imagen individual de docker):
-	nano docker/images/Dockerfile
-	
-	FROM <imagen_base>								(indica la imagen base sobre la que se construirá la imagen del proyecto)
-	WORKDIR /app									(indica el directorio de trabajo dentro del contenedor, no confundir con el directorio app/)
-	COPY . .									(copia todos los archivos del proyecto dentro de la carpeta /app del contenedor)
-	RUN pip install --no-cache-dir -r requirements.txt				(ejecuta el comando "pip install ..." durante la construcción de la imagen)
-	CMD ["flask", "run", "--host=0.0.0.0", "--port=5000", "--reload", "--debug"]	(ejecuta el comando una vez iniciado el contenedor)
-
-Nota 1: RUN ejecuta comandos durante la construcción de la imagen y CMD una vez iniciado el contenedor. Solo puede haber 1 comando CMD.
-Nota 2: los comandos ejecutados con RUN y CMD son independientes en cada proyecto, en este caso son para una aplicación flask.
-
-3. Construir la imagen (desde la raiz del proyecto):
-	docker build -t <nombre_imagen>:<tag_imagen> -f docker/images/Dockerfile .
-
-
-
-#####################
-CREAR REDES INTERNAS
-Las redes internas se utilizan para que dos o más contenedores se comuniquen.
-#####################
-
-1. Crear red:
-	docker network create <nombre_red>
-
-2. Listar redes:
+- Listar redes:
 	docker network ls
 
-Nota: para que los contenedores se comuniquen, al ejecutarlos hay que indicarles que pertenecen a la red creada (comando "--network").
+- Crear una red:
+	docker network create <nombre_red>
+
+- Ver los logs de un contenedor:
+	docker logs <id_contendor> [--tail=<número_lineas]
+
+- Borrar todas las imágenes huérfanas (sin etiqueta):
+	docker image prune
+- Borrar todas las imágenes sin usar (sin asociar a un contenedor):
+	docker image prune -a
+
+- Borrar todos los volúmentes anónimos (sin nombre específico, solo cadena de texto):
+	docker volume prune
+- Borrar todos los volúmenes sin usar:
+	docker volume prune -a
+
+- Borrar todas las redes sin usar:
+	docker network prune
+
+- Construir una imagen:
+	docker build [opciones] <ruta_contexto>
+		* Si la construcción se realiza desde el directorio raíz de un proyecto, <ruta_contexto> suele ser un punto (directorio actual).
+
+	Opciones:
+		- "-t <nombre_imagen>:<tag_imagen>": asigna un nombre una versión a la imagen
+		- "-f <ruta>/Dockerfile": indica el Dockerfile a utilizar. Si se omite, Docker toma por defecto el Dockerfile existente en el directorio actual.
+
+- Construir y ejecutar los contenedores definidos en el Docker Compose:
+	docker compose [-f <ruta>/docker-compose.yml] up [opciones]
+
+	Opciones:
+		- "-d": inicia los contenedores en segundo plano.
+		- "--build": construye las imágenes de los contenedores si estas no existen y fuerza su reconstrucción si existen.
+
+- Parar y borrar los contenedores definidos con Docker Compose:
+	docker compose [-f <ruta>/docker-compose.yml] down
+
+- Copiar un archivo o directorio del host al contenedor:
+	docker cp <ruta_host> <contenedor>:<ruta_contenedor>
+
+- Copiar un archivo o directorio del contenedor al host:
+	docker cp <contenedor>:<ruta_contenedor> <ruta_host>
 
 
 
-##########################################
-ORQUESTACIÓN DE SERVICIOS: Docker Compose
-##########################################
-(Coordinar varios contenedores)
+######################################################################
+DOCKERFILE
+Es el conjunto de instrucciones necesarias para construir una imagen.
+######################################################################
 
-1. Crear el archivo docker-compose.yml en el directorio docker/ del proyecto.
-	Ejemplo:
-		services:
-		  web:
-		    container_name: web_app_container
-		    env_file:
-		      - ../.env
-		    ports:
-		      - "5000:5000"
-		    depends_on:
-		      - db
-		    build:
-		      context: ../
-		      dockerfile: docker/images/Dockerfile
-		    networks:
-		      - uvlhub_network
-		    entrypoint: ["/app/scripts/wait-for-db.sh"]
-		    command: ["flask", "run", "--host=0.0.0.0", "--port=5000", "--reload", "--debug"]
-		
-		  db:
-		    container_name: mariadb_container
-		    image: mariadb:12.0.2
-		    env_file:
-		      - ../.env
-		    volumes:
-		      - db_data:/var/lib/mysql
-		    networks:
-		      - uvlhub_network
-	
+¡! Importante: Configurar las variables de entorno (archivo .env)
+
+	FROM <imagen_base> [AS <nombre_fase>]
+		--> indica la imagen base sobre la que se creará la imagen del proyecto. Es común separar el proceso de creación en distintas fases (por ej.: construcción y ejecución) utilizando imágenes distintas, aprovechando que algunas son más ligeras y seguras que otras.
+		Para copiar archivos de fases anteriores, se utiliza la opción --from=<fase>
+
+	WORKDIR /app
+		--> indica el directorio de trabajo dentro del contenedor, se utiliza /app por convención.
+
+	COPY <archivo/directorio_local> <archivo/directorio_contenedor>
+		--> copia archivos o directorios enteros del host al contenedor. Un punto significa el directorio actual.
+		Ejemplos comunes:
+		· COPY . . --> copia todo del directorio actual del host al directorio actual del contenedor (/app).
+		· COPY src/ src/ --> copia la carpeta src.
+		· COPY pom.xml ./ --> copia el archivo al directorio local del contenedor. Se utiliza la barra por convención, para evitar que parezca que se está renombrando el archivo, aunque no es completamente necesaria.
+
+	RUN <comando>
+		--> ejecuta un comando dentro del contenedor.
+		Ejemplos comunes:
+		· RUN pip install -r requirements.text
+		· RUN chmod +x ./mvnw
+		· RUN ./mvnw clean package
+
+	¡! Buena práctica: a la hora de crear contenedores de aplicaciones, puede ser recomendable ejecutar el binario sin permisos de administrador:
+	RUN addgroup -S <grupo> && adduser -S <usuario> -G <grupo>
+	USER <usuario>
+		--> Una vez creado el usuario no root, es posible copiar archivos y directorios asignándolo como propietario con la opción "--chown=<usuario>:<grupo>"
+
+	EXPOSE <puerto>/<protocolo>
+		--> informa qué puertos prevé utilizar la imagen, pero no abre ni publica ningún puerto por sí mismo. El protocolo por defecto es TCP.
+
+	HEALTHCHECK [opciones] \
+		CMD <comando_comprobación> || exit 1
+			--> ejecuta un comando de comprobación para comprobar si el contenedor funciona correctamente.
+			Opciones:
+			· --interval=TIEMPO: tiempo de espera entre comprobaciones. Por defecto, 30s.
+			· --timeout=TIEMPO: tiempo máximo que se le permite tardar al comando de comprobación antes de considerarlo un fallo. Por defecto, 30s.
+			· --start-period=TIEMPO: tiempo de cortesía inicial tras el arranque; los fallos ocurridos durante esta ventana no cuentan para el límite de reintentos (útil para contenedores pesados). Por defecto, 0s.
+			· --start-interval=TIEMPO: frecuencia acelerada de comprobación que se aplica únicamente durante el arranque inicial, para detectarlo rápido sin esperar al intervalo normal. Por defecto, 0s.
+			· --retries=N: número de fallos consecutivos necesarios para que el contenedor cambie definitivamente se dé por fallido.
+
+	ENTRYPOINT ["ejecutable", "parámetro1", "parámetro2", ...]
+		--> define el ejecutable fijo e inmutable del contenedor para que actúe como un binario.
+
+	CMD ["<comando>", "parámetro1", "parámetro2", ...]
+		--> Ejecuta el comando una vez que el contenedor se inicia. Fácilmente sustituible en el comando docker run.
+		Solamente tendrá efecto el último CMD escrito en el Dockerfile.
+
+
+#################################################
+DOCKER COMPOSE
+Permite definir y orquestar varios contenedores.
+#################################################
+
+Importante: las rutas relativas del archivo (context, env_file, bind mounts...) se resuelven desde la carpeta donde está el docker-compose.yml, no desde donde se ejecuta el comando.
+
+Estructura general (elementos de primer nivel):
+
+	services:
+		--> (obligatorio) los contenedores que forman la aplicación. Cada clave es el nombre del servicio.
+	volumes:
+		--> volúmenes con nombre que se podrán usar en los servicios.
+	networks:
+		--> redes que se podrán usar en los servicios.
+	configs: y secrets:
+		--> ficheros de configuración y datos sensibles gestionados por Compose.
+	name:
+		--> nombre del proyecto (por defecto, el de la carpeta). Se usa como prefijo de los contenedores, redes y volúmenes.
+
+--------------------------------
+SERVICES: atributos más comunes
+--------------------------------
+
+	<nombre_servicio>:
+		--> nombre con el que se identifica el servicio. Dentro de una red de Compose, el resto de servicios lo utilizan como nombre de host.
+
+		container_name: <nombre>
+		--> nombre personalizado del contenedor. Si no se indica, Compose genera uno (<proyecto>-<servicio>-<n>).
+
+		image: <imagen>[:<tag>]
+			--> imagen desde la que se crea el contenedor. Formato: [registro/][proyecto/]imagen[:tag|@digest].
+			Si no existe en local, Compose la descarga (ver pull_policy).
+
+		build:
+			--> indica cómo construir la imagen del servicio desde un Dockerfile. Puede ser una cadena (solo el contexto) o un bloque:
+
+			context: <ruta> (normalmente: .)
+				--> directorio que se envía a Docker como contexto de construcción.
+			dockerfile: <ruta>/Dockerfile
+				--> Dockerfile a utilizar.
+			target: build
+				--> fase concreta a construir de un Dockerfile multi-etapa.
+			args:
+				--> valores para las instrucciones ARG del Dockerfile (solo existen durante la construcción).
+				- <ARGUMENTO>: <valor>
+
+			no_cache / pull / cache_from / cache_to: ver apartado de CACHÉ.
+
+		* Normalmente se usa solo -image- para descargar una imagen existente o solo -build- para construirla en local (a partir de un Dockerfile), pero si se combinan ambos, Compose compila el Dockerfile local y etiqueta la imagen resultante con el nombre de -image:-, dejándola guardada en el Docker local lista para reutilizarse o subirse a un registro remoto con -push-.
+
+		env_file:
+			--> carga variables de entorno desde un .env hacia el contenedor.
+			- <ruta>
+
+		environment:
+			--> define variables de entorno del contenedor.
+
+			- <NOMBRE_VARIABLE>: <valor>
+			- <NOMBRE_VARIABLE>: "booleano"
+				--> los booleanos van entre comillas para que el YAML no los convierta
+			- <NOMBRE_VARIABLE>:
+				--> sin valor: Compose lo toma del entorno; si no existe, la variable no se define.
+
+			¡! Si una variable está en env_file y en environment, GANA environment.
+
+			Interpolación: permite escribir ${VARIABLE} en el docker-compose.yml. Compose las sustituye con las variables del shell o del archivo ".env" que esté junto al docker-compose.yml.
+				- ${VAR}
+					--> valor de VAR
+				- ${VAR:-valor}
+					--> valor de VAR; si no existe o está vacía, usa "valor"
+				- ${VAR:?mensaje}
+					--> si no existe o está vacía, aborta con el mensaje de error
+				- $$
+					--> escribe un "$" literal (útil para que lo interprete el shell del contenedor)
+
+		ports:
+			--> publica puertos del contenedor en el host.
+
+			- "<puerto_host>:<puerto_contenedor>"
+			- "127.0.0.1:<puerto_host>:<puerto_contenedor>"
+				--> solo accesible desde la propia máquina
+			- "${VARIABLE:-<puerto_predeterminado>}:<puerto_contenedor>"
+				--> utilizando una variable de entorno
+
+		expose:
+			- "<puerto>"
+			--> puertos accesibles solo para el resto de servicios de la red, sin publicarlos en el host.
+
 		volumes:
-		  db_data:
+			--> monta volúmenes o directorios dentro del contenedor.
+
+			- <nombre_volumen>:<ruta_contenedor>
+				--> volumen con nombre, gestionado por Docker. El nombre debe declararse también en el "volumes:" de primer nivel.
+			- <ruta_host>:<ruta_contenedor>
+				--> bind mount, enlaza un directorio real del host con otro del contenedor.
+			- <ruta_host>:<ruta_contenedor>:ro
+				--> bind mount en modo de solo lectura. Si se omite el modo, este será de lectura y escritura (:rw).
+
+			* Sintaxis larga (más explícita):
+			- type: bind
+				source: <ruta_host>
+				target: <ruta_contenedor>
+				read_only: true/false
 
 		networks:
-		  uvlhub_network:
+			--> redes a las que se conecta el servicio. Deben declararse en el "networks:" de primer nivel.
+			Si no se indica ninguna, Compose crea una red por defecto del proyecto y conecta todos los servicios a ella.
 
-2. Ejecutar los contenedores definidos con Docker Compose:
-	docker compose -f docker/docker-compose.yml up -d --build
-	
-	La opción "-d" sirve para iniciar los contenedores en secundo plano.
-	La opción "--build" sirve para construir las imágenes de los contenedores si estas no existen, y para forzar su reconstrucción si ya existieran.
+			- <nombre_red>
 
-3. Parar los contenedores definidos con Docker Compose:
-	docker compose -f docker/docker-compose.yml down
+		depends_on:
+			--> controla el orden de arranque y parada entre servicios.
+			Compose crea los servicios en orden de dependencia y los elimina en el orden inverso.
+
+			Sintaxis corta (solo espera a que el servicio ARRANQUE, no a que esté listo):
+
+			- <nombre_servicio>
+
+			Sintaxis larga:
+
+			- <nombre_servicio>
+				condition: <condición>
+				restart: true/false
+				required: true/false
+
+				* Condiciones (cuándo se considera cumplida la dependencia):
+					- service_started: el contenedor ha arrancado (equivale a la sintaxis corta).
+					- service_healthy: el healthcheck del servicio está en estado "healthy".
+					- service_completed_successfully: el servicio ha terminado con éxito (útil para tareas de inicialización).
+				* restart: si es true, Compose reinicia este servicio cuando se actualiza la dependencia (solo reinicios ordenados por Compose, no los automáticos del runtime).
+				* required: si es false, Compose solo avisa (no falla) cuando la dependencia no está disponible. Por defecto, true.
+
+		healthcheck:
+			--> comprueba si el contenedor funciona correctamente. Funciona igual que HEALTHCHECK del Dockerfile y sus valores sustituyen a los de la imagen.
+			test:<comando_comprobación>, con la forma ["<comando>", "parámetro1", "parámetro2", ...]
+			interval:TIEMPO
+				--> tiempo de espera entre comprobaciones. Por defecto, 30s.
+			timeout:TIEMPO
+				--> tiempo máximo que se le permite tardar al comando de comprobación antes de considerarlo un fallo. Por defecto, 30s.
+			retries=N
+				--> número de fallos consecutivos necesarios para que el contenedor cambie definitivamente se dé por fallido.
+			start-period=TIEMPO
+				--> tiempo de cortesía inicial tras el arranque; los fallos ocurridos durante esta ventana no cuentan para el límite de reintentos (útil para contenedores pesados). Por defecto, 0s.
+			start-interval=TIEMPO
+				--> frecuencia acelerada de comprobación que se aplica únicamente durante el arranque inicial, para detectarlo rápido sin esperar al intervalo normal. Por defecto, 0s.
+			disable: true/false
+				--> desactiva el healthcheck heredado de la imagen. Por defecto, false.
+
+		command: <comando>
+			--> sustituye al CMD del Dockerfile. Puede ser en formato cadena o lista (exec). Un valor "[]" o "''" anula el CMD de la imagen (lo deja vacío).
+
+			¡! A diferencia del CMD del Dockerfile, no se ejecuta dentro de un shell. Para usar variables o características del shell hay que invocarlo explícitamente:
+			command: /bin/sh -c '<comando>'
+
+		entrypoint: <ejecutable>
+			--> sustituye al ENTRYPOINT del Dockerfile. Puede ser cadena o lista (exec).
+
+		restart: <política>
+			--> qué hacer cuando el contenedor se detiene.
+
+			* Políticas:
+				· no: nunca se reinicia (valor por defecto).
+				· always: se reinicia siempre.
+				· on-failure[:max_reintentos]: solo si termina con error.
+				· unless-stopped: siempre, salvo que se haya detenido manualmente.
+
+		user: <usuario>[:<grupo>]
+			--> usuario con el que se ejecuta el proceso del contenedor, sustituyendo al USER del Dockerfile.
+
+		working_dir: <ruta>
+			--> directorio de trabajo dentro del contenedor, sustituyendo al WORKDIR del Dockerfile.
+
+		profiles: [<perfil>]
+			--> el servicio solo se levanta si se activa su perfil (docker compose --profile <perfil> up). Los servicios sin perfil siempre se levantan.
+
+		pull_policy: <política>
+			--> cuándo descargar la imagen: always, never, missing (solo si no existe en local), build (siempre construirla), daily, weekly o every_<duración>.
+			Si hay "build" e "image" a la vez y no se indica pull_policy, Compose intenta primero descargar la imagen y construye solo si no la encuentra en el registro.
 
 
 
-##############################
-EXPLICACIÓN A MODO DE RESUMEN
-##############################
-Al arrancar un contenedor Docker, siempre se ejecuta un único comando final. Lo que hacen ENTRYPOINT, CMD y command (de Compose) es decidir qué comando será ese y con qué argumentos.
+#########################################################
+CREAR UN VOLUMEN DE TRABAJO CON BIND MOUNT EN DESARROLLO
+#########################################################
+El objetivo de este volumen es sincronizar el código de desarrollo del host con el código interno del contenedor, para evitar tener que reconstruir la imagen a cada cambio de línea en el código. Para ello se crea el siguiente volumen en el comando "docker run" o en el Docker Compose, si se usa:
+	<carpeta_local_proyecto>:<carpeta_trabajo_contenedor>
 
-- CMD → “qué hacer por defecto”
-	Está en el Dockerfile y es el comando que Docker ejecuta si no se indica otra cosa.
-
-- ENTRYPOINT → “qué se ejecuta siempre”
-	También va en el Dockerfile pero se puede sobreescribir en el docker-compose.yml. Define el programa o script principal que siempre se ejecuta.
-
-Nota: Normalmente, el entrypoint se combina con CMD de la forma: "ejecuta esto (entrypoint) y luego este comando final (cmd)".
-
-- command (de docker-compose.yml) → “sobrescribe el CMD”
-	En docker-compose.yml, el campo command reemplaza al CMD del Dockerfile, pero no al ENTRYPOINT.
-
-
-COMBINACIÓN DE ELEMENTOS
-	1. Lee el YAML como un diccionario
-	2. Ejecuta todo lo que haya en un Dockerfile EXCEPTUANDO directivas ENTRYPOINT y CMD.
-	3. Monta el volumen o los volúmenes de ese contenedor (si procede)
-	4. Y ahora viene el detalle:
-		- Si se está levantando un contenedor a través de docker-compose, va a ejecutar los entrypoints y commands definidos en ese docker-compose.
-		- Un entrypoint definido en un docker-compose va a sustituir a un entrypoint definido en el Dockerfile.
-		- Un command definido en un docker-compose va a sustituir a un CMD definido en el Dockerfile.
-
-
-
-###########################################
-CREAR UN VOLUMEN DE TRABAJO CON BIND MOUNT
-El objetivo de este volumen es sincronizar el código de desarrollo del host con el código interno del contenedor,
-para evitar tener que reconstruir la imagen a cada cambio de línea.
-###########################################
-
-1. En el archivo docker-compose.yml, añadir lo siguiente en el servicio de la aplicación en desarrollo:
-	volumes:
-		- <carpeta_local_proyecto>:<carpeta_trabajo_contenedor>
-
-Nota: normalmente la línea quedaría tal que
+Normalmente quedaría tal que
 	- ../:/app
 	siendo "/app" el espacio de trabajo definido en el Dockerfile.
 
+
+
+##########
+DOCKERHUB
+##########
+
+- Hacer login en DockerHub:
+	docker login [-u usuario]
+
+- Etiquetar una imagen para subirla:
+	docker tag <imagen_local>:<tag> <usuario>/<repositorio>:<tag>
+
+- Subir imagen:
+	docker push <usuario>/<repositorio>:<tag>
