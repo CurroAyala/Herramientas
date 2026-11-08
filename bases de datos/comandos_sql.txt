@@ -1,0 +1,671 @@
+#########
+## SQL ##
+#########
+
+SQL (Structured Query Language) es el lenguaje estándar para crear, manipular y consultar bases de datos relacionales.
+
+* SQL no distingue entre mayúsculas y minúsculas, pero se siguen unas normas de estilo para unificar el código.
+* Todas las instrucciones terminan con punto y coma (;).
+* Comentarios:
+    -- comentario de una línea
+    /* comentario de varias líneas */
+
+
+###########################
+CONSIDERACIONES DE ESTILO
+###########################
+
+- Las palabras reservadas del lenguaje se escriben en MAYÚSCULAS: INSERT, UPDATE, DELETE...
+- Los nombres de tablas: primera letra en mayúscula, en PascalCase si tienen varias palabras, y en plural. Ej: Degrees, Subjects, UserComments.
+- Los nombres de atributos, constraints y demás elementos que no sean tablas: en minúsculas, en CamelCase si tienen varias palabras. Ej: degreeId, course, photoUrl, text.
+- El código se escribe en inglés.
+- Los IDs de todas las tablas deben tener nombres distintos (degreeId, subjectId...) para evitar errores.
+- Los nombres de procedimientos empiezan por "proc" (ej: procDeleteGrades) para distinguirlos de las funciones.
+
+
+#########################
+CREACIÓN DE TABLAS (DDL)
+#########################
+
+- DROP TABLE IF EXISTS <tabla>;: elimina la tabla si ya existe. Evita errores al ejecutar el script varias veces.
+
+- CREATE TABLE <tabla>(<definición de atributos y restricciones>);: crea una tabla. Los atributos y restricciones se separan con comas.
+
+    Ejemplo:
+        DROP TABLE IF EXISTS Degrees;
+        CREATE TABLE Degrees(
+            degreeId INT NOT NULL AUTO_INCREMENT,
+            name VARCHAR(60) NOT NULL UNIQUE,
+            years INT DEFAULT(4) NOT NULL,
+            PRIMARY KEY (degreeId),
+            CONSTRAINT invalidDegreeYear CHECK (years >= 3 AND years <= 5)
+        );
+
+* En un script de creación de tablas, lo primero que se hace es borrar todas las tablas si existen, en ORDEN CONTRARIO a su creación. Una tabla no se puede borrar mientras otra la referencie con una clave ajena.
+    DROP TABLE IF EXISTS Grades;
+    DROP TABLE IF EXISTS GroupsStudents;
+    DROP TABLE IF EXISTS Students;
+    DROP TABLE IF EXISTS Groups;
+    DROP TABLE IF EXISTS Subjects;
+    DROP TABLE IF EXISTS Degrees;
+
+
+TIPOS DE DATOS:
+    - INT: número entero. (Sinónimo: INTEGER)
+    - DECIMAL(n,d): número decimal exacto. n = total de dígitos, d = cuántos son decimales. Ej: DECIMAL(4,2) permite hasta 99.99. (Sinónimos: DEC, NUMERIC, FIXED)
+    - FLOAT / DOUBLE: decimales en coma flotante. Son aproximados, pero más eficientes que DECIMAL.
+    - VARCHAR(n): cadena de texto de hasta n caracteres.
+    - CHAR(n): cadena de texto de EXACTAMENTE n caracteres (no admite otra longitud). Ej: CHAR(9) para un DNI.
+    - DATE: fecha sin hora (formato 'YYYY-MM-DD').
+    - TIME: hora sin fecha.
+    - DATETIME: fecha con hora.
+    - BOOLEAN: booleano, se almacena como 0 o 1. (Sinónimos: BOOL, TINYINT(1))
+
+
+ATRIBUTOS:
+    - NOT NULL: el atributo no puede ser nulo (no tener valor). Las claves primarias son NOT NULL por defecto, pero se indica por consistencia.
+    - UNIQUE: el atributo no puede tomar valores repetidos. Lo convierte en clave alternativa.
+    - AUTO_INCREMENT: se le da valor automáticamente siguiendo una secuencia. Solo en atributos que sean clave (primaria o alternativa).
+    - DEFAULT(<valor>): valor por defecto del atributo.
+
+
+CLAVE PRIMARIA:
+    PRIMARY KEY (<atributo1>[, <atributo2>...])
+    * Si la clave está formada por varios atributos, se incluyen todos separados por comas.
+
+
+CLAVE AJENA:
+    FOREIGN KEY (<atributo>) REFERENCES <tabla_referenciada> (<atributo_referenciado>)
+
+    * El atributo debe ser del mismo tipo que la clave que referencia.
+    * El atributo referenciado debe ser clave primaria o alternativa.
+    * Su nombre no tiene que coincidir con el de la clave referenciada, pero es habitual que sea igual.
+    * Si la clave ajena tiene varios atributos, se escriben entre paréntesis separados por comas.
+    * Una clave ajena NOT NULL indica que la relación no es opcional (multiplicidad 1). Sin NOT NULL, la multiplicidad es 0..1.
+    * Por defecto, no se puede borrar ni modificar una fila que esté referenciada por otra.
+
+
+RELACIONES:
+    · 1:N: la clave ajena se añade en el lado N de la relación.
+        Ej: Subjects tiene degreeId (FK a Degrees).
+    · N:M: hace falta una tabla adicional que contenga los pares de claves ajenas. Su nombre es la unión de los nombres de las dos tablas.
+        Ej:
+            CREATE TABLE GroupsStudents(
+                groupStudentId INT NOT NULL AUTO_INCREMENT,
+                groupId INT NOT NULL,
+                studentId INT NOT NULL,
+                PRIMARY KEY (groupStudentId),
+                FOREIGN KEY (groupId) REFERENCES Groups (groupId),
+                FOREIGN KEY (studentId) REFERENCES Students (studentId),
+                UNIQUE (groupId, studentId)
+            );
+    · Composición: se implementa igual que una relación normal (ej: una asignatura se compone de grupos), pero se puede indicar ON DELETE CASCADE.
+
+
+#############################
+RESTRICCIONES (CONSTRAINTS)
+#############################
+
+- CONSTRAINT <nombre> CHECK (<expresión booleana>): obliga a que se cumpla la expresión. El nombre aparecerá en el mensaje de error si no se cumple.
+    Ej:
+        CONSTRAINT negativeSubjectCredits CHECK (credits > 0)
+        CONSTRAINT invalidSubjectCourse CHECK (year >= 1 AND year <= 5)
+
+- ENUMERADOS: se implementan comprobando que el valor está en un conjunto de valores posibles.
+    Ej:
+        CONSTRAINT invalidSubjectType CHECK (type IN ('Formación Básica', 'Optativa', 'Obligatoria'))
+
+- UNIQUE (<atrib1>, <atrib2>, ...): restricción de unicidad sobre una combinación de atributos. No puede haber dos filas con la misma combinación de valores.
+    Ej: UNIQUE (name, year, subjectId) --> no puede haber dos grupos con el mismo nombre, año y asignatura.
+
+- CONSTRAINT <nombre> UNIQUE (<atrib1>, <atrib2>, ...): igual que la anterior, pero dándole un nombre que se mostrará si no se cumple. No lleva la palabra CHECK.
+    Ej: CONSTRAINT RN_002_duplicatedCallGrade UNIQUE (gradeCall, studentId, groupId)
+
+
+COMPORTAMIENTO EN BORRADO DE CLAVES AJENAS:
+Se añade al final de la declaración de la clave ajena:
+    FOREIGN KEY (degreeId) REFERENCES Degrees (degreeId) ON DELETE <comportamiento>
+
+    Comportamientos:
+        - ON DELETE RESTRICT: impide el borrado de la fila referenciada. Es el comportamiento por defecto.
+        - ON DELETE CASCADE: borra también las filas que la referencian (borrado en cascada).
+        - ON DELETE SET NULL: pone la clave ajena a NULL. Solo es posible si la clave ajena NO es NOT NULL (multiplicidad 0..1).
+        - ON DELETE SET DEFAULT: pone la clave ajena a su valor por defecto. Solo es posible si se ha definido un DEFAULT() para ella.
+
+* En cualquier caso, se mantiene la integridad referencial: nunca pueden existir referencias a filas que no existen.
+
+
+################################
+MANIPULACIÓN DE DATOS (DML)
+################################
+
+--- INSERT ---
+
+- INSERT INTO <tabla> VALUES (<valor1>, <valor2>, ...);
+    Inserta una fila indicando todos los valores en el orden en que están en la tabla.
+    Ej: INSERT INTO Degrees VALUES (NULL, 'Tecnologías Informáticas', 4);
+    * Al ID se le da NULL para que se genere automáticamente con AUTO_INCREMENT. Si se da un número, se usa ese.
+
+- INSERT INTO <tabla> (<col1>, <col2>, ...) VALUES (<v1>, <v2>, ...), (<v1>, <v2>, ...);
+    Inserta una o varias filas indicando las columnas a rellenar.
+    Ej:
+        INSERT INTO Degrees (name, years) VALUES
+            ('Ingeniería del Software', 4),
+            ('Ingeniería del Computadores', 4),
+            ('Tecnologías Informáticas', 4);
+
+    * Las columnas no indicadas toman NULL (o su valor por defecto).
+    * El orden de las columnas indicadas no tiene que coincidir con el de la tabla, pero sí con el de los valores.
+    * Las cadenas de texto van entre comillas SIMPLES (las dobles se aceptan en MariaDB pero no se aconsejan).
+    * Las fechas se introducen como cadenas con formato 'YYYY-MM-DD'.
+    * Los booleanos se introducen como 0 o 1.
+
+
+--- UPDATE ---
+
+- UPDATE <tabla> SET <col1> = <valor1>[, <col2> = <valor2>...] [WHERE <condición>];
+    Modifica una o varias filas.
+    Ej:
+        UPDATE Students
+            SET birthdate = '1998-01-01', surname = 'Fernández'
+            WHERE studentId = 3;
+
+    * Se pueden actualizar varios atributos a la vez.
+    * Se pueden usar los valores antiguos: UPDATE Subjects SET credits = credits/2;
+    * ¡CUIDADO! Si se omite WHERE, se actualizan TODAS las filas.
+
+
+--- DELETE ---
+
+- DELETE FROM <tabla> [WHERE <condición>];
+    Borra filas de una tabla.
+    Ej:
+        DELETE FROM Grades
+            WHERE gradeId = 1;
+
+    * ¡CUIDADO! Si se omite WHERE, se borran TODAS las filas de la tabla.
+    * Por defecto, no se puede borrar una fila referenciada por otra mediante clave ajena (habría que eliminar antes la referencia, o usar ON DELETE CASCADE).
+
+
+########################
+CONSULTAS (SELECT)
+########################
+
+- SELECT <columnas> FROM <tabla(s)> [WHERE <condición>];
+    El resultado es siempre una tabla con las filas y columnas determinadas por la consulta.
+    Ej:
+        SELECT firstName, surname
+            FROM Students
+            WHERE accessMethod = 'Selectividad';
+
+    * Para obtener todas las columnas: SELECT * FROM <tabla>;
+
+- Cálculos como columnas: se pueden devolver expresiones calculadas.
+    Ej: SELECT credits > 3 FROM Subjects;  --> devuelve un booleano por cada fila.
+
+- Orden de las cláusulas:
+    SELECT ... FROM ... [JOIN ...] [WHERE ...] [GROUP BY ...] [HAVING ...] [ORDER BY ...] [LIMIT ... [OFFSET ...]];
+
+
+OPERADORES EN WHERE:
+    - =, <, >, <=, >=, <> (o !=): comparación.
+    - AND, OR, NOT: operadores lógicos.
+    - IN (<lista o subconsulta>): el valor está en el conjunto indicado.
+    - LIKE '<patrón>': comparación de cadenas con comodines.
+        · %: cualquier cantidad de caracteres.
+        · _: exactamente un carácter cualquiera.
+    - BETWEEN a AND b: valor entre a y b, ambos incluidos.
+    - IS NULL / IS NOT NULL: comprobar si un valor es nulo.
+
+    Ej:
+        SELECT * FROM Grades WHERE value < 4 OR value > 6;
+        SELECT * FROM Students WHERE dni LIKE '%C';           -- DNI terminado en C
+        SELECT * FROM Students WHERE firstName LIKE '______'; -- nombre de 6 letras (6 guiones bajos)
+        SELECT * FROM Students WHERE surname IN (SELECT acronym FROM Subjects);
+
+
+FUNCIONES DE AGREGADO:
+Devuelven un único valor calculado para toda la tabla (o para cada grupo si se usa GROUP BY).
+    - COUNT(*): cuenta el número de filas.
+    - COUNT(DISTINCT <col>): cuenta valores distintos.
+    - SUM(<col>): suma.
+    - AVG(<col>): media.
+    - MAX(<col>) / MIN(<col>): máximo / mínimo.
+
+    Ej:
+        SELECT AVG(credits) FROM Subjects;
+        SELECT COUNT(*) FROM Subjects WHERE credits > 4;
+        SELECT COUNT(DISTINCT accessMethod) FROM Students;
+
+    * Al pedir un valor agregado solo se devuelve una fila. No tiene sentido pedirlo junto a atributos que cambian de fila a fila: devolverá el valor de la primera fila.
+
+
+- SELECT DISTINCT <col>: elimina los valores repetidos del resultado.
+    Ej: SELECT DISTINCT name FROM Groups;
+
+
+- Alias (AS): da un nombre a una columna o expresión.
+    Ej: SELECT year, AVG(value) AS average FROM ViewSubjectGrades GROUP BY year;
+
+
+FUNCIONES DE FECHA:
+    - YEAR(<fecha>): devuelve el año.
+    - MONTH(<fecha>): devuelve el mes.
+    Ej:
+        SELECT * FROM Students WHERE YEAR(birthdate) < 1995;
+        SELECT * FROM Students WHERE MONTH(birthdate) >= 1 AND MONTH(birthdate) <= 2;
+
+
+SUBCONSULTAS:
+Se puede incluir una consulta dentro de la condición de otra, en lugar de usar valores fijos.
+    Ej:
+        SELECT DISTINCT(studentId)
+            FROM GroupsStudents
+            WHERE groupId IN (SELECT groupId FROM Groups WHERE year = 2019);
+
+
+###############
+VISTAS
+###############
+
+Una vista da un nombre a una consulta SELECT que luego se puede usar como si fuera una tabla. Simplifica mucho las consultas anidadas complejas.
+
+- CREATE OR REPLACE VIEW <nombre_vista> AS <consulta SELECT>;
+    Ej:
+        CREATE OR REPLACE VIEW ViewGradesGroup18 AS
+            SELECT * FROM Grades WHERE groupId = 18;
+
+        SELECT MAX(value) FROM ViewGradesGroup18;
+        SELECT * FROM ViewGradesGroup18 WHERE gradeCall = 2;
+
+* Una vista se puede usar dentro de otra vista:
+    CREATE OR REPLACE VIEW ViewGradesGroup18Call1 AS
+        SELECT * FROM ViewGradesGroup18 WHERE gradeCall = 1;
+
+
+###################################
+ORDER BY, LIMIT Y OFFSET
+###################################
+
+- ORDER BY <expresión> [ASC | DESC]: ordena las filas del resultado.
+    * Se coloca después de WHERE (si lo hay).
+    * ASC (ascendente) es el valor por defecto. DESC para orden descendente.
+    * Se puede usar cualquier expresión aplicable a una fila, incluso subconsultas que devuelvan un valor.
+
+    Ej:
+        SELECT * FROM Grades ORDER BY value;
+        SELECT * FROM Grades
+            WHERE value >= 5
+            ORDER BY (SELECT surname FROM Students WHERE Students.studentId = Grades.studentId) DESC;
+
+- LIMIT <n>: limita el número de filas devueltas.
+    Ej: SELECT * FROM Grades ORDER BY value DESC LIMIT 5;  --> las 5 mejores notas
+
+- LIMIT <n> OFFSET <m>: devuelve n filas a partir de la fila m (se salta las m primeras). Sirve para paginar.
+    Ej: SELECT * FROM Grades ORDER BY value DESC LIMIT 5 OFFSET 5;  --> segunda página de 5 notas
+
+    * OFFSET no recibe un número de página, sino el número de filas que se saltan.
+        Página 1: OFFSET 0 | Página 2: OFFSET 5 | Página 3: OFFSET 10 (con 5 filas por página)
+
+
+###############
+JOIN
+###############
+
+- Producto cartesiano: si se indican varias tablas en FROM sin relacionarlas, se obtienen todas las combinaciones posibles de filas.
+    SELECT * FROM Groups, GroupsStudents, Students;
+
+- JOIN ... ON (...): une filas de tablas distintas a partir de uno o varios atributos (normalmente clave primaria en una tabla y ajena en la otra).
+    Ej:
+        SELECT *
+            FROM Groups
+            JOIN GroupsStudents ON (Groups.groupId = GroupsStudents.groupId)
+            JOIN Students ON (GroupsStudents.studentId = Students.studentId);
+
+    * Si hay varias tablas con columnas del mismo nombre, hay que indicar siempre la tabla de la que proviene la columna (Tabla.columna).
+    * Se pueden unir varias tablas a la vez.
+    * Con JOIN, si un grupo no tiene alumnos (o un alumno no tiene grupos) no aparecerá en el resultado.
+
+- LEFT JOIN / RIGHT JOIN: devuelven todas las filas de una de las tablas, añadiendo la información de la otra si la hay.
+
+- NATURAL JOIN: une automáticamente las tablas por las columnas que tienen el mismo nombre. Útil para relaciones de claves ajenas, ya que suelen tener el mismo nombre en ambas tablas.
+    Ej:
+        SELECT *
+            FROM Groups
+            NATURAL JOIN GroupsStudents
+            NATURAL JOIN Students;
+
+
+#############################
+GROUP BY Y HAVING
+#############################
+
+- GROUP BY <criterio(s)>: agrupa las filas según el criterio indicado, de forma que las funciones de agregado se calculan para cada grupo.
+    Ej: nota media de cada alumno con su nombre y apellidos
+        SELECT firstName, surname, AVG(value)
+            FROM Students
+            JOIN Grades ON (Students.studentId = Grades.studentId)
+            GROUP BY Students.studentId;
+
+    * Los atributos no agregados se toman de la primera fila del grupo. Solo tiene sentido pedirlos si son iguales en todas las filas del grupo (ej: nombre y apellidos de un mismo alumno).
+    * Se puede agrupar por varios criterios: los grupos se forman con las filas que tengan el mismo valor en todos ellos.
+        GROUP BY gradeCall, subjectId
+
+- HAVING <condición>: filtra los GRUPOS (después de agrupar).
+    Ej: nota media de las asignaturas con más de 2 notas
+        SELECT name, AVG(value), COUNT(*)
+            FROM ViewSubjectGrades
+            GROUP BY name
+            HAVING COUNT(*) > 2;
+
+    * WHERE filtra las filas ANTES de agrupar; HAVING filtra los grupos DESPUÉS de agrupar. No confundirlos.
+
+
+####################################
+EJEMPLOS DE CONSULTAS HABITUALES
+####################################
+
+-- Asignatura con acrónimo 'FP'
+SELECT * FROM Subjects WHERE acronym = 'FP';
+
+-- Nombres y acrónimos de todas las asignaturas
+SELECT name, acronym FROM Subjects;
+
+-- Media de las notas del grupo con ID 18
+SELECT AVG(value) FROM Grades WHERE groupId = 18;
+
+-- Total de créditos de las asignaturas de un grado
+SELECT SUM(credits) FROM Subjects WHERE degreeId = 3;
+
+-- Máxima nota del alumno con ID 1
+SELECT MAX(value) FROM Grades WHERE studentId = 1;
+
+-- Número de alumnos nacidos en cada año
+SELECT YEAR(birthdate), COUNT(*)
+    FROM Students
+    GROUP BY YEAR(birthdate);
+
+-- Vista con las notas de cada alumno en cada asignatura (une 4 tablas)
+CREATE OR REPLACE VIEW ViewSubjectGrades AS
+    SELECT Students.studentId, Students.firstName, Students.surname,
+           Subjects.subjectId, Subjects.name,
+           Grades.value, Grades.gradeCall,
+           Groups.year
+    FROM Students
+    JOIN Grades ON (Students.studentId = Grades.studentId)
+    JOIN Groups ON (Grades.groupId = Groups.groupId)
+    JOIN Subjects ON (Groups.subjectId = Subjects.subjectId);
+
+-- Nota media por convocatoria y asignatura en 2018, solo aprobados
+SELECT gradeCall, name, AVG(value)
+    FROM ViewSubjectGrades
+    WHERE value >= 5 AND year = 2018
+    GROUP BY gradeCall, subjectId;
+
+-- Número de alumnos por grado en el curso 2019
+SELECT name, COUNT(DISTINCT(studentId))
+    FROM ViewDegreeStudents
+    WHERE year = 2019
+    GROUP BY degreeId;
+
+-- Las 3 asignaturas con más grupos de teoría en 2019
+SELECT name, COUNT(*)
+    FROM ViewSubjectGroups
+    WHERE year = 2019 AND activity = 'Teoría'
+    GROUP BY subjectId
+    ORDER BY COUNT(*) DESC
+    LIMIT 3;
+
+-- Asignaturas que pertenecen a un grado con más de 4 asignaturas
+CREATE OR REPLACE VIEW ViewDegreeNumSubjects AS
+    SELECT degreeId, COUNT(*) AS numSubjects
+    FROM Subjects
+    GROUP BY degreeId;
+
+SELECT name
+    FROM Subjects
+    JOIN ViewDegreeNumSubjects ON (Subjects.degreeId = ViewDegreeNumSubjects.degreeId)
+    WHERE numSubjects > 4;
+
+
+########################################
+PROCEDIMIENTOS Y FUNCIONES
+########################################
+
+Un procedimiento es un conjunto de sentencias SQL con un nombre y unos parámetros, análogo a las funciones de otros lenguajes. Sirve para definir un conjunto de instrucciones reutilizable.
+
+Diferencia principal:
+    - Procedimiento: NO devuelve ningún valor.
+    - Función: SÍ devuelve un valor, por lo que debe declarar su tipo de retorno.
+
+
+- DELIMITER <símbolo>: cambia el símbolo que delimita instrucciones.
+    * Dentro del cuerpo (entre BEGIN y END) hay puntos y coma que el intérprete podría confundir con el final de la definición. Por eso se cambia el delimitador a // durante la definición y se restablece a ; al terminar.
+
+
+PROCEDIMIENTOS:
+
+    DELIMITER //
+    CREATE OR REPLACE PROCEDURE <procNombre>(<parámetro1> <tipo>, <parámetro2> <tipo>, ...)
+    BEGIN
+        <instrucciones>
+    END //
+    DELIMITER ;
+
+    Ej:
+        DELIMITER //
+        CREATE OR REPLACE PROCEDURE procDeleteGrades(studentDni CHAR(9))
+        BEGIN
+            DECLARE id INT;
+            SET id = (SELECT studentId FROM Students WHERE dni = studentDni);
+            DELETE FROM Grades WHERE studentId = id;
+        END //
+        DELIMITER ;
+
+    - CALL <procNombre>(<argumentos>);: ejecuta un procedimiento.
+        Ej: CALL procDeleteGrades('12345678A');
+
+    * Procedimiento sin parámetros: se escriben los paréntesis vacíos. Ej: procDeleteData()
+
+
+FUNCIONES:
+
+    DELIMITER //
+    CREATE OR REPLACE FUNCTION <nombre>(<parámetro> <tipo>, ...) RETURNS <tipo>
+    BEGIN
+        <instrucciones>
+        RETURN <valor>;
+    END //
+    DELIMITER ;
+
+    Ej:
+        DELIMITER //
+        CREATE OR REPLACE FUNCTION avgGrade(studentId INT) RETURNS DOUBLE
+        BEGIN
+            DECLARE avgStudentGrade DOUBLE;
+            SET avgStudentGrade = (SELECT AVG(value) FROM Grades
+                                   WHERE Grades.studentId = studentId);
+            RETURN avgStudentGrade;
+        END //
+        DELIMITER ;
+
+    * RETURNS indica el tipo que devuelve la función; RETURN devuelve el valor (una variable o el resultado de una consulta).
+    * Las funciones se pueden usar en cualquier lugar donde se podría usar una variable: consultas, o el cuerpo de procedimientos, funciones y disparadores.
+    * Se consultan con SELECT, no con CALL:
+        SELECT avgGrade(2);
+        SELECT firstName, surname, avgGrade(studentId) FROM Students;
+
+
+VARIABLES (dentro de procedimientos, funciones y disparadores):
+    - DECLARE <variable> <tipo>;: declara una variable local.
+    - SET <variable> = <valor | (consulta)>;: asigna un valor. Puede ser el resultado de una consulta.
+    - DECLARE <variable> ROW TYPE OF <Tabla>;: variable que almacena una fila completa de una tabla (se accede con variable.atributo).
+        Se le asigna con: SELECT * INTO <variable> FROM <Tabla> WHERE ...;
+    - SET @<variable> = <valor>;: variable a nivel de usuario (con @). No es local: sigue existiendo y conserva su valor fuera del bloque donde se creó. No requiere DECLARE.
+
+CONTROL DE FLUJO:
+    IF (<condición>) THEN
+        <instrucciones>
+    END IF;
+
+CONCATENAR CADENAS:
+    CONCAT(<cadena1>, <cadena2>, ...)
+
+
+########################
+DISPARADORES (TRIGGERS)
+########################
+
+Permiten asociar la ejecución de código a la inserción, modificación o borrado de filas de una tabla. Sirven para comprobar restricciones complejas e implementar reglas de negocio.
+
+    DELIMITER //
+    CREATE OR REPLACE TRIGGER <nombre>
+    BEFORE | AFTER  INSERT | UPDATE | DELETE ON <tabla>
+    FOR EACH ROW
+    BEGIN
+        <instrucciones>
+    END//
+    DELIMITER ;
+
+    * BEFORE: se ejecuta justo antes de la operación. AFTER: se ejecuta después (la fila ya habría sido insertada/modificada/borrada).
+    * INSERT, UPDATE o DELETE indican con qué operación se vincula el disparador.
+    * FOR EACH ROW: el disparador se ejecuta por cada fila afectada (una operación puede afectar a varias filas).
+    * new: hace referencia a la fila nueva (INSERT y UPDATE), tanto en BEFORE como en AFTER.
+    * old: hace referencia a la fila antes de ser modificada o borrada (UPDATE y DELETE).
+    * Si se quiere la misma comprobación al insertar y al actualizar, hay que crear dos disparadores (cambiando el nombre y INSERT por UPDATE).
+    * Se pueden usar DECLARE y SET igual que en procedimientos y funciones.
+    * Por convención el nombre lleva el código de la regla de negocio: RN001_triggerWithHonours.
+
+
+LANZAR UN ERROR (cancela la operación):
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '<mensaje>';
+
+    * '45000' es el código de error habitual para errores personalizados.
+    * Conviene que el mensaje sea lo más descriptivo posible.
+    * CONCAT no se puede usar en la misma instrucción que SIGNAL: primero se crea el mensaje en una variable y luego se usa.
+
+
+EJEMPLO 1: no se puede dar matrícula de honor con nota menor que 9
+    CREATE OR REPLACE TRIGGER RN001_triggerWithHonours
+    BEFORE INSERT ON Grades
+    FOR EACH ROW
+    BEGIN
+        IF (new.withHonours = 1 AND new.value < 9.0) THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT =
+                'You cannot insert a grade with honours whose value is less than 9';
+        END IF;
+    END//
+
+EJEMPLO 2: un alumno no puede tener nota en un grupo al que no pertenece
+    CREATE OR REPLACE TRIGGER RN003_triggerGradeStudentGroup
+    BEFORE INSERT ON Grades
+    FOR EACH ROW
+    BEGIN
+        DECLARE isInGroup INT;
+        SET isInGroup = (SELECT COUNT(*)
+                         FROM GroupsStudents
+                         WHERE studentId = new.studentId AND groupId = new.groupId);
+        IF (isInGroup < 1) THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT =
+                'A student cannot have grades for groups in which they are not registered';
+        END IF;
+    END//
+
+EJEMPLO 3: error si una nota se sube en más de 4 puntos
+    CREATE OR REPLACE TRIGGER RN004_triggerGradesChangeDifference
+    BEFORE UPDATE ON Grades
+    FOR EACH ROW
+    BEGIN
+        DECLARE difference DECIMAL(4,2);
+        DECLARE student ROW TYPE OF Students;
+        SET difference = new.value - old.value;
+        IF (difference > 4) THEN
+            SELECT * INTO student FROM Students WHERE studentId = new.studentId;
+            SET @error_message = CONCAT('You cannot add ', difference,
+                ' points to a grade for the student ',
+                student.firstName, ' ', student.surname);
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @error_message;
+        END IF;
+    END//
+
+EJEMPLO 4: en vez de lanzar error, modificar el valor que se va a guardar (la nota solo sube 4 puntos como máximo)
+    CREATE OR REPLACE TRIGGER RN004_triggerGradesChangeDifference
+    BEFORE UPDATE ON Grades
+    FOR EACH ROW
+    BEGIN
+        DECLARE difference DECIMAL(4,2);
+        SET difference = new.value - old.value;
+        IF (difference > 4) THEN
+            SET new.value = old.value + 4;
+        END IF;
+    END//
+
+    * En un BEFORE, se puede reemplazar el valor de los atributos que se están insertando/actualizando asignándolos a new.
+
+
+###################
+TRANSACCIONES
+###################
+
+Una transacción es una Unidad Lógica de Trabajo: un conjunto de sentencias que se ejecutan todas o ninguna.
+
+* MariaDB, por defecto, fuerza un COMMIT automático tras cada instrucción (AUTOCOMMIT = 1), de modo que cada sentencia se ejecuta por separado. Si una de varias sentencias falla, las anteriores ya quedan guardadas.
+
+- SELECT @@AUTOCOMMIT;: consulta el estado de AUTOCOMMIT (1 = activado).
+- SET AUTOCOMMIT=0;: desactiva el commit automático.
+- START TRANSACTION;: inicia una transacción.
+- COMMIT; (o COMMIT WORK;): confirma los cambios de la transacción.
+- ROLLBACK; (o ROLLBACK WORK;): cancela la transacción y deshace los cambios.
+
+    Ej:
+        SET AUTOCOMMIT=0;
+        START TRANSACTION;
+        INSERT INTO Grades (value, gradeCall, withHonours, studentId, groupId) VALUES (4.50, 3, 0, 1, 1);
+        INSERT INTO Grades (value, gradeCall, withHonours, studentId, groupId) VALUES (7.50, 1, 0, 1, 3);
+        COMMIT;
+
+* Si en un script no se controlan las excepciones, la ejecución se detiene al producirse el error y las sentencias anteriores ya ejecutadas NO se deshacen (ni siquiera terminando con ROLLBACK, porque el error evita que se llegue a ejecutar). Para lograr que todo se haga o todo se deshaga, hay que colocar el código dentro de un PROCEDIMIENTO con control de excepciones.
+* Estando en una transacción activa, si se produce una excepción grave (SQLEXCEPTION) y no se controla por código, la transacción aborta (ROLLBACK implícito).
+
+
+TRANSACCIÓN EN UN PROCEDIMIENTO ALMACENADO:
+
+    DELIMITER //
+    CREATE OR REPLACE PROCEDURE procNewDegreeSubject(degreeName VARCHAR(60),
+        degreeYears INT, subjectName VARCHAR(100), subjectAcronym VARCHAR(8),
+        subjectCredits INT, subjectYear INT, subjectType VARCHAR(20))
+    BEGIN
+        START TRANSACTION;
+        tblock: BEGIN
+            DECLARE newDegreeId INT;
+            DECLARE EXIT HANDLER FOR SQLEXCEPTION, SQLWARNING
+            BEGIN
+                ROLLBACK;
+                RESIGNAL;
+            END;
+
+            INSERT INTO Degrees (name, years) VALUES (degreeName, degreeYears);
+            SET newDegreeId = (SELECT degreeId FROM Degrees WHERE name = degreeName);
+            INSERT INTO Subjects (degreeId, name, acronym, credits, year, type)
+                VALUES (newDegreeId, subjectName, subjectAcronym,
+                        subjectCredits, subjectYear, subjectType);
+            COMMIT;
+        END tblock;
+    END //
+    DELIMITER ;
+
+    * El contenido se mete en un bloque con nombre (tblock). Es necesario para poder definir qué hacer en caso de error.
+    * DECLARE EXIT HANDLER FOR SQLEXCEPTION, SQLWARNING: define cómo tratar las excepciones y advertencias. Aquí: se hace ROLLBACK y se relanza la excepción con RESIGNAL.
+    * Solo si se llega al final del bloque se hace COMMIT.
+    * Si se llama con datos erróneos, no se inserta ni el grado ni la asignatura.
+
+
+TRANSACCIONES CONCURRENTES:
+* Los cambios de una transacción NO son visibles desde otras transacciones (otras conexiones, otras aplicaciones) hasta que se hace COMMIT. Dentro de la propia transacción sí se ven.
+    Ej:
+        SET AUTOCOMMIT=0;
+        START TRANSACTION;
+        INSERT INTO Grades (...) VALUES (...);
+        SELECT * FROM Grades;   --> aquí aparece la nota nueva
+        -- Desde otra conexión, la nota nueva NO aparece hasta ejecutar:
+        COMMIT;
