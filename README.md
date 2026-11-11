@@ -15,7 +15,7 @@ Repositorio personal con apuntes, chuletas (*cheatsheets*) y ejemplos.
 * [Linux](consola/comandos_linux.txt) – Comandos esenciales de Bash/sh, gestión de paquetes, permisos y utilidades del sistema.
 
 ### ⚙️ DevOps
-+ [Introducción a Ansible](devops/Introducción%20a%20Ansible.pdf) - Conceptos y comandos básicos de Ansible.
+* [Introducción a Ansible](devops/Introducción%20a%20Ansible.pdf) - Conceptos y comandos básicos de Ansible.
 * [Docker](devops/comandos_docker.txt) – Gestión de contenedores, imágenes, volúmenes y Docker Compose.
 * [Git](devops/comandos_git.txt) – Flujos de trabajo, ramas, resolución de conflictos y comandos habituales.
 * [GitLab CI/CD](devops/gitlab_cicd.txt) - Creación de pipelines para GitLab.
