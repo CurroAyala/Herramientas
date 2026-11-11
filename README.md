@@ -50,8 +50,9 @@ Repositorio personal con apuntes, chuletas (*cheatsheets*) y ejemplos.
 │   ├── comandos_cmd.txt
 │   └── comandos_linux.txt
 ├── devops/
+│   ├── Introducción a Ansible.pdf
 │   ├── comandos_docker.txt
-│   └── comandos_git.txt
+│   ├── comandos_git.txt
 │   └── gitlab_cicd.txt
 ├── redes/
 │   ├── comandos_nmap.txt
